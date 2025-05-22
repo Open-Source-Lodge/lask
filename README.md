@@ -17,6 +17,8 @@ A lightweight CLI tool to interact with OpenAI's ChatGPT and other LLMs directly
 pip install gpterm
 ```
 
+(For dev, do `pip install .`)
+
 For a user-specific installation:
 
 ```bash
@@ -52,7 +54,7 @@ Before using gpterm, you need to set up your OpenAI API key:
    ```bash
    export OPENAI_API_KEY='your-api-key-here'
    ```
-   
+
    To make it permanent, add the above line to your `~/.bashrc`, `~/.zshrc`, or equivalent shell configuration file.
 
    **Windows (Command Prompt):**
@@ -76,7 +78,7 @@ gpterm "What is the capital of France?"
 For multi-line or complex prompts:
 
 ```bash
-gpterm "Explain the concept of recursion in programming. 
+gpterm "Explain the concept of recursion in programming.
 Include a simple example in Python."
 ```
 
