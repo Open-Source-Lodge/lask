@@ -110,9 +110,26 @@ If you see an error about the API key:
 1. Double-check that you've correctly set the `OPENAI_API_KEY` environment variable
 2. Verify your API key is valid and has enough credits
 
+
+## Developing
+
+### Build
+To build the package, run:
+
+```bash
+uv build
+```
+
+### Install for development
+To install the package in development mode, run:
+
+```bash
+pip install dist/gpterm-0.1.0-py3-none-any.whl
+```
+
 ## License
 
-MIT License
+GNU General Public License v3.0 (GPL-3.0)
 
 ## Contributing
 

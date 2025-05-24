@@ -28,6 +28,7 @@ def main():
             {"role": "user", "content": prompt}
         ]
     }
+    print(f"Prompting OpenAI API with: {prompt}\n")
     response = requests.post(
         "https://api.openai.com/v1/chat/completions",
         headers=headers,
