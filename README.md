@@ -1,4 +1,4 @@
-# gpterm
+# lask
 
 A lightweight CLI tool to interact with OpenAI's ChatGPT and other LLMs directly from your terminal.
 
@@ -14,7 +14,7 @@ A lightweight CLI tool to interact with OpenAI's ChatGPT and other LLMs directly
 ### Using pip (recommended)
 
 ```bash
-pip install gpterm
+pip install lask
 ```
 
 (For dev, do `pip install .`)
@@ -22,19 +22,19 @@ pip install gpterm
 For a user-specific installation:
 
 ```bash
-pip install --user gpterm
+pip install --user lask
 ```
 
 ### From source
 
 1. Clone the repository:
    ```bash
-   git clone https://github.com/yourusername/gpterm.git
+   git clone https://github.com/yourusername/lask.git
    ```
 
 2. Navigate to the directory:
    ```bash
-   cd gpterm
+   cd lask
    ```
 
 3. Install the package:
@@ -44,7 +44,7 @@ pip install --user gpterm
 
 ## Setup
 
-Before using gpterm, you need to set up your OpenAI API key:
+Before using lask, you need to set up your OpenAI API key:
 
 1. Get an API key from [OpenAI](https://platform.openai.com/api-keys)
 
@@ -69,16 +69,16 @@ Before using gpterm, you need to set up your OpenAI API key:
 
 ## Usage
 
-Simply run `gpterm` followed by your prompt in quotes:
+Simply run `lask` followed by your prompt in quotes:
 
 ```bash
-gpterm "What is the capital of France?"
+lask "What is the capital of France?"
 ```
 
 For multi-line or complex prompts:
 
 ```bash
-gpterm "Explain the concept of recursion in programming.
+lask "Explain the concept of recursion in programming.
 Include a simple example in Python."
 ```
 
@@ -124,7 +124,7 @@ uv build
 To install the package in development mode, run:
 
 ```bash
-pip install dist/gpterm-0.1.0-py3-none-any.whl
+pip install dist/lask-0.1.0-py3-none-any.whl
 ```
 
 ## License

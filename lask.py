@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """
-gpterm: A CLI tool to prompt ChatGPT and other LLMs from the terminal.
+lask: A CLI tool to prompt ChatGPT and other LLMs from the terminal.
 Usage:
-    gpterm "Your prompt here"
+    lask "Your prompt here"
 This is a minimal implementation using OpenAI's API. Set your API key in the OPENAI_API_KEY environment variable.
 """
 import os
@@ -11,7 +11,7 @@ import requests
 
 def main():
     if len(sys.argv) < 2:
-        print("Usage: gpterm 'Your prompt here'")
+        print("Usage: lask 'Your prompt here'")
         sys.exit(1)
     prompt = " ".join(sys.argv[1:])
     api_key = os.getenv("OPENAI_API_KEY")
