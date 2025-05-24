@@ -1,10 +1,18 @@
 # lask
 
-A lightweight CLI tool to interact with OpenAI's ChatGPT and other LLMs directly from your terminal.
+A CLI tool to interact with OpenAI's ChatGPT and other LLMs directly from your terminal.
+
+
+## Usage
+Ensure you have `OPENAI_API_KEY` in your environment variables, then you can use `lask` to send prompts to the LLM.
+
+```bash
+lask What movie is this quote from\? \"that still only counts as one\"
+```
 
 ## Features
 
-- Simple command-line interface to send prompts to GPT-4.1
+- Simple command-line interface to send prompts to GPT-4.1, or other LLMs
 - Minimal dependencies (only requires the `requests` library)
 - Easy installation via pip
 - Direct output to your terminal
@@ -67,43 +75,8 @@ Before using lask, you need to set up your OpenAI API key:
    $env:OPENAI_API_KEY='your-api-key-here'
    ```
 
-## Usage
 
-Simply run `lask` followed by your prompt in quotes:
-
-```bash
-lask "What is the capital of France?"
-```
-
-For multi-line or complex prompts:
-
-```bash
-lask "Explain the concept of recursion in programming.
-Include a simple example in Python."
-```
-
-## Troubleshooting
-
-### Command not found
-
-If you get a "command not found" error after installation, ensure that your Python scripts directory is in your PATH.
-
-For user installations, you may need to add the Python user bin directory to your PATH:
-
-**Linux/macOS:**
-```bash
-# Add to your shell configuration file (~/.bashrc, ~/.zshrc, etc.)
-export PATH="$HOME/.local/bin:$PATH"
-```
-
-**Windows:**
-```
-# Add to your PATH environment variable
-%APPDATA%\Python\Python3X\Scripts
-```
-(Replace `Python3X` with your specific Python version)
-
-### API Key Issues
+## API Key Issues
 
 If you see an error about the API key:
 

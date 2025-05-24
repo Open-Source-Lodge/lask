@@ -1,11 +1,12 @@
 [project]
 name = "lask"
 version = "0.1.1"
-description = "Add your description here"
+description = "Ask your llm from the command line"
 readme = "README.md"
 requires-python = ">=3.9"
 dependencies = ["requests>=2.32.3", "setuptools>=80.8.0"]
 classifiers = ["Private :: Do Not Upload"]
+license = {text = "GNU General Public License v3 (GPLv3)"}
 
 [project.scripts]
 lask = "lask:main"
