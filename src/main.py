@@ -16,7 +16,7 @@ from src.providers import call_provider_api
 def load_config() -> Dict[str, Any]:
     """
     Load configuration from ~/.lask-config if it exists.
-    
+
     Returns:
         Dict[str, Any]: A dictionary containing the configuration.
     """
@@ -71,7 +71,7 @@ def main() -> None:
 
     # List of supported providers
     supported_providers: List[str] = ["openai", "anthropic", "aws", "azure"]
-    
+
     if provider not in supported_providers:
         print(f"Error: Unsupported provider '{provider}'. Supported providers are: {', '.join(supported_providers)}")
         sys.exit(1)
