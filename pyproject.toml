@@ -8,6 +8,7 @@ authors = [
     {name = "Open Source Lodge"}
 ]
 dependencies = ["requests>=2.32.3", "setuptools>=80.8.0"]
+classifiers = ["Programming Language :: Python :: 3", "Operating System :: OS Independent"]
 license = {text = "GNU General Public License v3 (GPLv3)"}
 
 [project.urls]
@@ -19,3 +20,30 @@ Changelog = "https://github.com/Open-Source-Lodge/lask/releases"
 
 [project.scripts]
 lask = "lask:main"
+
+[project.optional-dependencies]
+aws = ["boto3>=1.28.0"]
+all = ["boto3>=1.28.0"]
+
+[tool.semantic_release]
+version_variables = ["pyproject.toml:version"]
+branch = "main"
+upload_to_pypi = false
+upload_to_release = true
+build_command = "pip install build && python -m build"
+
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = "test_*.py"
+python_classes = "Test*"
+python_functions = "test_*"
+
+[dependency-groups]
+dev = [
+    "ruff>=0.11.11",
+    "pytest>=7.0.0",
+]

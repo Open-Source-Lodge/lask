@@ -1,10 +1,14 @@
+(Still under development)
+
 # lask
 
-A CLI tool to interact with OpenAI's ChatGPT and other LLMs directly from your terminal.
+Ask LLMs right from the terminal.
+
+Supports multiple providers like OpenAI, Anthropic, AWS Bedrock, and Azure OpenAI
 
 
 ## Usage
-Ensure you have `OPENAI_API_KEY` in your environment variables, then you can use `lask` to send prompts to the LLM.
+Ensure you have `OPENAI_API_KEY` in your environment variables or configure it in `~/.lask-config`, then you can use `lask` to send prompts to the LLM.
 
 ```bash
 lask What movie is this quote from\? \"that still only counts as one\"
@@ -12,8 +16,10 @@ lask What movie is this quote from\? \"that still only counts as one\"
 
 ## Features
 
-- Simple command-line interface to send prompts to GPT-4.1, or other LLMs
-- Minimal dependencies (only requires the `requests` library)
+- Simple command-line interface to send prompts to multiple LLM providers
+- Support for OpenAI, Anthropic, AWS Bedrock, and more.
+- Customizable models and parameters for each provider
+- Minimal dependencies (only requires the `requests` library, and `boto3` for AWS)
 - Easy installation via pip
 - Direct output to your terminal
 
@@ -52,39 +58,151 @@ pip install --user lask
 
 ## Setup
 
-Before using lask, you need to set up your OpenAI API key:
+Before using lask, you need to set up API keys for your preferred provider:
 
-1. Get an API key from [OpenAI](https://platform.openai.com/api-keys)
+1. Get an API key from your chosen provider:
+   - [OpenAI](https://platform.openai.com/api-keys)
+   - [Anthropic](https://console.anthropic.com/)
+   - AWS Bedrock (uses your AWS credentials)
 
-2. Set the environment variable:
+2. Create a configuration file at `~/.lask-config` in INI format:
 
-   **Linux/macOS:**
+   ```ini
+   [default]
+   provider = openai  # Options: openai, anthropic, aws, azure
+
+   [openai]
+   # OpenAI-specific settings
+   api_key = your-api-key-here
+   model = gpt-4.1
+
+   [anthropic]
+   # Anthropic-specific settings
+   api_key = your-api-key-here
+   model = claude-3-opus-20240229
+
+   [aws]
+   # AWS Bedrock settings
+   api_key = your-api-key-here
+   model_id = anthropic.claude-3-sonnet-20240229-v1:0
+   region = us-east-1
+
+   [azure]
+   # Azure OpenAI settings
+   api_key = your-azure-api-key
+   resource_name = your-resource-name
+   deployment_id = your-deployment-id
+   ```
+
+   This INI configuration file allows you to set your preferred provider, API keys, and customize the models and parameters for each provider.
+
+   An example configuration file with comments is available in the `examples/example.lask-config` file.
+
+3. Alternatively, set the appropriate environment variable:
+
+   **For OpenAI (default provider):**
    ```bash
    export OPENAI_API_KEY='your-api-key-here'
    ```
 
-   To make it permanent, add the above line to your `~/.bashrc`, `~/.zshrc`, or equivalent shell configuration file.
-
-   **Windows (Command Prompt):**
-   ```
-   set OPENAI_API_KEY=your-api-key-here
+   **For Anthropic:**
+   ```bash
+   export ANTHROPIC_API_KEY='your-api-key-here'
    ```
 
-   **Windows (PowerShell):**
+   **For AWS Bedrock:**
+   Ensure your AWS credentials are properly configured.
+
+   **For Azure OpenAI:**
+   ```bash
+   export AZURE_OPENAI_API_KEY='your-api-key-here'
    ```
-   $env:OPENAI_API_KEY='your-api-key-here'
-   ```
+
+   To make these permanent, add the export line to your `~/.bashrc`, `~/.zshrc`, or equivalent shell configuration file.
+
+   **Windows users** can use `set` (CMD) or `$env:` (PowerShell) instead of `export`.
 
 
 ## API Key Issues
 
 If you see an error about the API key:
 
-1. Double-check that you've correctly set the `OPENAI_API_KEY` environment variable
-2. Verify your API key is valid and has enough credits
+1. Ensure you've configured the API key in the `~/.lask-config` file
+2. Alternatively, double-check that you've correctly set the appropriate environment variable for your chosen provider:
+   - OpenAI: `OPENAI_API_KEY`
+   - Anthropic: `ANTHROPIC_API_KEY`
+   - AWS: Check your AWS credentials configuration
+3. Verify your API key is valid and has enough credits
 
+
+## Configuration
+
+You can find a fully commented example configuration file in the `examples/example.lask-config` directory of this repository. Copy it to your home directory as `~/.lask-config` and customize it to your needs.
+
+### Selecting a Provider
+
+Set your preferred provider in the `[default]` section:
+
+```ini
+[default]
+provider = openai  # Options: openai, anthropic, aws
+```
+
+### Provider-specific Configuration
+
+Each provider has its own section where you can set provider-specific options:
+
+#### OpenAI
+
+```ini
+[openai]
+api_key = your-openai-api-key
+model = gpt-4.1
+temperature = 0.7
+max_tokens = 2000
+```
+
+#### Anthropic
+
+```ini
+[anthropic]
+api_key = your-anthropic-api-key
+model = claude-3-opus-20240229
+temperature = 0.7
+max_tokens = 4096
+```
+
+#### AWS Bedrock
+
+```ini
+[aws]
+model_id = anthropic.claude-3-sonnet-20240229-v1:0
+region = us-east-1
+temperature = 0.7
+max_tokens = 4096
+```
+
+#### Azure OpenAI
+
+```ini
+[azure]
+api_key = your-azure-api-key
+resource_name = your-resource-name
+deployment_id = your-deployment-id
+api_version = 2023-05-15
+temperature = 0.7
+max_tokens = 2000
+```
 
 ## Developing
+
+### Dependencies
+This repo uses `uv` for running scripts and building the package. [uv install instruction](https://docs.astral.sh/uv/getting-started/installation/)
+
+To install the development dependencies, run:
+```bash
+uv sync
+```
 
 ### Build
 To build the package, run:
@@ -99,6 +217,21 @@ To install the package in development mode, run:
 ```bash
 pip install dist/lask-0.1.0-py3-none-any.whl
 ```
+
+or
+
+```bash
+pip install -e .
+```
+With the `-e` flag, you can edit the source code and see changes immediately without reinstalling.
+
+
+If you want to use AWS Bedrock, also install boto3:
+
+```bash
+pip install boto3
+```
+(I have not tested aws yet, so please report any issues you find)
 
 ## License
 

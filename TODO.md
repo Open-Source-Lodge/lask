@@ -1,0 +1,7 @@
+- [ ] Add --init to create a basic config file
+- [ ] Add --provider=X to set the provider
+- [ ] Add --model=X to set the model
+- [ ] Add --temperature=X to set the temperature
+- [ ] Add --max-tokens=X to set the max tokens
+- [ ] Add Color ouptut
+- [ ] Add system prompt with --system-prompt or in config file

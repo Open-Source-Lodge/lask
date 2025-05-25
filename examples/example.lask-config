@@ -1,0 +1,65 @@
+# Example configuration file for lask
+# This file should be placed at ~/.lask-config
+
+[default]
+# The default chosen provider to use for LLM requests
+# Options: openai, anthropic, aws, azure
+provider = openai
+
+# OpenAI-specific configuration
+[openai]
+# Your OpenAI API key. If not specified, falls back to the default api_key
+# Get your API key from https://platform.openai.com/api-keys
+# api_key = your-openai-api-key-here
+
+# The OpenAI model to use for queries
+# Common options: gpt-3.5-turbo, gpt-4, gpt-4.1, gpt-4o
+model = gpt-4.1
+
+# temperature = 0.7
+# max_tokens = 2000
+
+# Anthropic-specific configuration
+[anthropic]
+# Your Anthropic API key. If not specified, falls back to the default api_key
+# Get your API key from https://console.anthropic.com/
+# api_key = your-anthropic-api-key-here
+
+# The Anthropic model to use
+# Common options: claude-3-opus-20240229, claude-3-sonnet-20240229, claude-3-haiku-20240307
+model = claude-3-opus-20240229
+
+# temperature = 0.7
+# max_tokens = 4096
+
+# Azure OpenAI configuration
+[azure]
+# Your Azure OpenAI API key. If not specified, falls back to the default api_key
+# api_key = your-azure-openai-api-key-here
+
+# Required Azure OpenAI settings
+resource_name = your-resource-name
+deployment_id = your-deployment-id
+
+# Optional Azure OpenAI settings
+# api_version = 2023-05-15
+# temperature = 0.7
+# max_tokens = 2000
+
+# AWS Bedrock configuration
+[aws]
+# AWS uses credentials from ~/.aws/credentials or environment variables
+# No API key needed if your AWS credentials are properly configured
+
+# The model ID to use with AWS Bedrock
+# Common options:
+# - anthropic.claude-3-sonnet-20240229-v1:0
+# - anthropic.claude-3-haiku-20240307-v1:0
+# - amazon.titan-text-express-v1
+model_id = anthropic.claude-3-sonnet-20240229-v1:0
+
+# AWS region where Bedrock is available
+region = us-east-1
+
+# temperature = 0.7
+# max_tokens = 4096
