@@ -295,8 +295,8 @@ def get_markdown_renderer(config) -> MarkdownRenderer:
         MarkdownRenderer: A configured markdown renderer
     """
     # Get markdown rendering settings from config
-    use_colors = config.get("use_colors", True)
-    use_rich = config.get("use_rich", True)
+    use_colors = config.use_colors
+    use_rich = config.use_rich
 
     # Print a warning if rich was requested but not available
     if use_rich and not RICH_AVAILABLE:

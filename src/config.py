@@ -96,6 +96,17 @@ class LaskConfig:
                                     setattr(provider_config, key, float(value))
                                 elif key == "max_tokens" and value:
                                     setattr(provider_config, key, int(value))
+                                elif key in [
+                                    "streaming",
+                                    "use_colors",
+                                    "use_rich",
+                                    "colorize_markdown",
+                                ]:
+                                    setattr(
+                                        provider_config,
+                                        key,
+                                        value.lower() in ["true", "yes", "1", "on"],
+                                    )
                                 else:
                                     setattr(provider_config, key, value)
                         config.providers[section] = provider_config

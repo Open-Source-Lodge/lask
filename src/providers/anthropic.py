@@ -41,7 +41,7 @@ def call_api(config: LaskConfig, prompt: str) -> Union[str, Iterator[str]]:
     model: str = anthropic_config.model or "claude-3-opus-20240229"
 
     # Check if streaming is enabled (default to True)
-    streaming: bool = anthropic_config.get("streaming", True)
+    streaming: bool = anthropic_config.streaming
 
     headers: Dict[str, str] = {
         "x-api-key": api_key,

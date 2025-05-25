@@ -42,7 +42,7 @@ def call_api(config: LaskConfig, prompt: str) -> Union[str, Iterator[str]]:
     region: str = aws_config.region or "us-east-1"
 
     # Check if streaming is enabled (default to True)
-    streaming: bool = aws_config.get("streaming", True)
+    streaming: bool = aws_config.streaming
 
     # Create a Bedrock Runtime client
     bedrock = boto3.client(service_name="bedrock-runtime", region_name=region)

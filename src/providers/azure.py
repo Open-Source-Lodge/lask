@@ -46,7 +46,7 @@ def call_api(config: LaskConfig, prompt: str) -> Union[str, Iterator[str]]:
         sys.exit(1)
 
     # Check if streaming is enabled (default to True)
-    streaming: bool = azure_config.get("streaming", True)
+    streaming: bool = azure_config.streaming
 
     deployment_id: Optional[str] = azure_config.deployment_id
     if not deployment_id:

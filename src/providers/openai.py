@@ -38,7 +38,7 @@ def call_api(config: LaskConfig, prompt: str) -> Union[str, Iterator[str]]:
     model: str = openai_config.model or "gpt-4.1"
 
     # Check if streaming is enabled (default to True)
-    streaming: bool = openai_config.get("streaming", True)
+    streaming: bool = openai_config.streaming
 
     headers: Dict[str, str] = {
         "Authorization": f"Bearer {api_key}",
