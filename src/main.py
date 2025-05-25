@@ -6,10 +6,12 @@ Usage:
 This tool supports multiple LLM providers including OpenAI, Anthropic, and AWS Bedrock.
 Configure your API keys and preferences in the ~/.lask-config file.
 """
+
 import sys
 
 from src.config import LaskConfig
 from src.providers import call_provider_api
+
 
 def main() -> None:
     """
@@ -32,7 +34,9 @@ def main() -> None:
 
     # Check if provider is supported
     if provider not in LaskConfig.SUPPORTED_PROVIDERS:
-        print(f"Error: Unsupported provider '{provider}'. Supported providers are: {', '.join(LaskConfig.SUPPORTED_PROVIDERS)}")
+        print(
+            f"Error: Unsupported provider '{provider}'. Supported providers are: {', '.join(LaskConfig.SUPPORTED_PROVIDERS)}"
+        )
         sys.exit(1)
 
     try:
@@ -45,6 +49,7 @@ def main() -> None:
     except Exception as e:
         print(f"Error: {str(e)}")
         sys.exit(1)
+
 
 if __name__ == "__main__":
     main()

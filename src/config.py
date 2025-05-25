@@ -1,6 +1,7 @@
 """
 Configuration handling for lask.
 """
+
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Dict, Any, Optional, ClassVar, List
@@ -10,6 +11,7 @@ import configparser
 @dataclass
 class ProviderConfig:
     """Configuration for a specific provider."""
+
     api_key: Optional[str] = None
     model: Optional[str] = None
     temperature: Optional[float] = None
@@ -38,6 +40,7 @@ class ProviderConfig:
 @dataclass
 class LaskConfig:
     """Configuration for lask."""
+
     # Default provider
     provider: str = "openai"
     # Provider-specific configurations
@@ -84,9 +87,13 @@ class LaskConfig:
                         config.providers[section] = provider_config
 
             except configparser.Error:
-                print(f"Warning: Could not parse {cls.CONFIG_PATH}. Using default configuration.")
+                print(
+                    f"Warning: Could not parse {cls.CONFIG_PATH}. Using default configuration."
+                )
             except Exception as e:
-                print(f"Warning: Error reading {cls.CONFIG_PATH}: {e}. Using default configuration.")
+                print(
+                    f"Warning: Error reading {cls.CONFIG_PATH}: {e}. Using default configuration."
+                )
 
         return config
 
