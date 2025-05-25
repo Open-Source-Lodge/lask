@@ -5,7 +5,7 @@ on:
 
 jobs:
   build:
-    name: Build distribution 📦
+    name: Ruff check 🦺
     runs-on: ubuntu-latest
 
     steps:
