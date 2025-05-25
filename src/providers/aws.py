@@ -3,9 +3,23 @@ AWS Bedrock provider module for lask
 """
 import sys
 import json
+from typing import Dict, Any, cast
 
-def call_api(config, prompt):
-    """Call the AWS Bedrock API with the given prompt."""
+def call_api(config: Dict[str, Any], prompt: str) -> str:
+    """
+    Call the AWS Bedrock API with the given prompt.
+    
+    Args:
+        config (Dict[str, Any]): Configuration dictionary
+        prompt (str): The user prompt
+        
+    Returns:
+        str: The response from the AWS Bedrock API
+        
+    Raises:
+        ImportError: If boto3 is not installed
+        Exception: If there's an error calling the AWS Bedrock API
+    """
     # We import boto3 only when needed to avoid requiring it for users who don't use AWS
     try:
         import boto3
@@ -16,13 +30,13 @@ def call_api(config, prompt):
         sys.exit(1)
 
     # Check if we have provider-specific config
-    aws_config = {}
+    aws_config: Dict[str, Any] = {}
     if 'providers' in config and 'aws' in config['providers']:
         aws_config = config['providers']['aws']
 
     # Get the model ID
-    model_id = aws_config.get("model_id", "anthropic.claude-3-sonnet-20240229-v1:0")
-    region = aws_config.get("region", "us-east-1")
+    model_id: str = aws_config.get("model_id", "anthropic.claude-3-sonnet-20240229-v1:0")
+    region: str = aws_config.get("region", "us-east-1")
 
     # Create a Bedrock Runtime client
     bedrock = boto3.client(
@@ -31,6 +45,8 @@ def call_api(config, prompt):
     )
 
     # Prepare the request body based on the model provider
+    body: Dict[str, Any] = {}
+    
     if "anthropic" in model_id:
         body = {
             "anthropic_version": "bedrock-2023-05-31",
@@ -65,7 +81,7 @@ def call_api(config, prompt):
             modelId=model_id,
             body=json.dumps(body)
         )
-        response_body = json.loads(response.get('body').read())
+        response_body: Dict[str, Any] = json.loads(response.get('body').read())
 
         # Extract the content based on the model provider
         if "anthropic" in model_id:
@@ -73,7 +89,7 @@ def call_api(config, prompt):
         elif "amazon" in model_id:
             return response_body.get('results')[0]['outputText']
         else:
-            return response_body.get('completion', response_body.get('generated_text', str(response_body)))
+            return cast(str, response_body.get('completion', response_body.get('generated_text', str(response_body))))
     except Exception as e:
         print(f"Error calling AWS Bedrock: {str(e)}")
         sys.exit(1)

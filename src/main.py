@@ -9,16 +9,22 @@ Configure your API keys and preferences in the ~/.lask-config file.
 import sys
 import configparser
 from pathlib import Path
+from typing import Dict, Any, List
 
 from src.providers import call_provider_api
 
-def load_config():
-    """Load configuration from ~/.lask-config if it exists."""
+def load_config() -> Dict[str, Any]:
+    """
+    Load configuration from ~/.lask-config if it exists.
+    
+    Returns:
+        Dict[str, Any]: A dictionary containing the configuration.
+    """
     config_path = Path.home() / ".lask-config"
-    # Default configuration
-    config = {
-        'provider': 'openai',  # Default provider
-        'model': 'gpt-4.1',    # Default model
+    # Fallback configuration
+    config: Dict[str, Any] = {
+        'provider': 'openai',  # Fallback provider
+        'model': 'gpt-4.1',    # Fallback model
         'providers': {}        # Provider-specific configs
     }
 
@@ -44,22 +50,27 @@ def load_config():
 
     return config
 
-def main():
+def main() -> None:
+    """
+    Main entry point for the lask CLI tool.
+    Parses command line arguments, loads configuration,
+    and calls the appropriate provider API.
+    """
     if len(sys.argv) < 2:
         print("Usage: lask 'Your prompt here'")
         sys.exit(1)
 
     # Load config from file
-    config = load_config()
+    config: Dict[str, Any] = load_config()
 
     # Get the prompt from command line arguments
-    prompt = " ".join(sys.argv[1:])
+    prompt: str = " ".join(sys.argv[1:])
 
     # Determine which provider to use
-    provider = config.get("provider", "openai").lower()
+    provider: str = config.get("provider", "openai").lower()
 
     # List of supported providers
-    supported_providers = ["openai", "anthropic", "aws", "azure"]
+    supported_providers: List[str] = ["openai", "anthropic", "aws", "azure"]
     
     if provider not in supported_providers:
         print(f"Error: Unsupported provider '{provider}'. Supported providers are: {', '.join(supported_providers)}")
@@ -67,7 +78,7 @@ def main():
 
     try:
         # Call the appropriate API based on the provider using the provider modules
-        result = call_provider_api(provider, config, prompt)
+        result: str = call_provider_api(provider, config, prompt)
         print(result)
     except ImportError as e:
         print(f"Error: {str(e)}")
