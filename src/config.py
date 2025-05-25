@@ -47,6 +47,11 @@ class LaskConfig:
     # Provider-specific configurations
     providers: Dict[str, ProviderConfig] = field(default_factory=dict)
 
+    # Output formatting options
+    use_colors: bool = True
+    use_rich: bool = True
+    colorize_markdown: bool = True
+
     # Class constants
     CONFIG_PATH: ClassVar[Path] = Path.home() / ".lask-config"
     SUPPORTED_PROVIDERS: ClassVar[List[str]] = ["openai", "anthropic", "aws", "azure"]
@@ -70,7 +75,15 @@ class LaskConfig:
                 if "default" in parser:
                     for key, value in parser["default"].items():
                         if hasattr(config, key):
-                            setattr(config, key, value)
+                            # Convert boolean options
+                            if key in ["use_colors", "use_rich", "colorize_markdown"]:
+                                setattr(
+                                    config,
+                                    key,
+                                    value.lower() in ["true", "yes", "1", "on"],
+                                )
+                            else:
+                                setattr(config, key, value)
 
                 # Load provider-specific sections
                 for section in parser.sections():

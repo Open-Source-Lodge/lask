@@ -5,7 +5,7 @@ description = "Ask your llm from the command line"
 readme = "README.md"
 requires-python = ">=3.9"
 authors = [{ name = "Open Source Lodge" }]
-dependencies = ["requests>=2.32.3", "setuptools>=80.8.0"]
+dependencies = ["requests>=2.32.3", "setuptools>=80.8.0", "rich>=13.5.0"]
 classifiers = [
     "Programming Language :: Python :: 3",
     "Operating System :: OS Independent",
@@ -24,7 +24,7 @@ lask = "src.main:main"
 
 [project.optional-dependencies]
 aws = ["boto3>=1.28.0"]
-all = ["boto3>=1.28.0"]
+all = ["boto3>=1.28.0", "rich>=13.5.0"]
 
 [tool.semantic_release]
 version_variables = ["pyproject.toml:version"]

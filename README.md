@@ -23,6 +23,7 @@ lask What movie is this quote from\? \"that still only counts as one\"
 - Easy installation via pip
 - Direct output to your terminal
 - Streaming responses for real-time output
+- Markdown colorization for better readability
 
 ## Installation
 
@@ -163,6 +164,21 @@ streaming = false  # Disable streaming for Anthropic
 
 When streaming is enabled, you'll see the response appearing in real-time as it's generated. When disabled, you'll get the complete response only after it's fully generated.
 
+### Markdown Colorization
+
+Responses are automatically colorized based on Markdown syntax to improve readability in the terminal. Headers, code blocks, lists, and other Markdown elements are highlighted with appropriate colors.
+
+You can customize the colorization in your configuration file:
+
+```ini
+[default]
+colorize_markdown = true  # Enable/disable Markdown colorization
+use_colors = true         # Enable/disable all terminal colors
+use_rich = true           # Use rich library for enhanced rendering if available
+```
+
+The colorization feature uses the [rich](https://github.com/Textualize/rich) library for enhanced rendering when available, but will fall back to basic terminal colors if rich is not installed.
+
 ### Provider-specific Configuration
 
 Each provider has its own section where you can set provider-specific options:
@@ -216,6 +232,11 @@ max_tokens = 2000
 ### Dependencies
 This repo uses `uv` for running scripts and building the package. [uv install instruction](https://docs.astral.sh/uv/getting-started/installation/)
 
+The project depends on:
+- `requests`: For making API calls
+- `rich` (optional): For enhanced Markdown rendering in the terminal
+- `boto3` (optional): For AWS Bedrock support
+
 To install the development dependencies, run:
 ```bash
 uv sync
@@ -243,10 +264,14 @@ pip install -e .
 With the `-e` flag, you can edit the source code and see changes immediately without reinstalling.
 
 
-If you want to use AWS Bedrock, also install boto3:
+For optional dependencies:
 
 ```bash
+# For AWS Bedrock support
 pip install boto3
+
+# For enhanced Markdown rendering
+pip install rich
 ```
 (I have not tested aws yet, so please report any issues you find)
 
