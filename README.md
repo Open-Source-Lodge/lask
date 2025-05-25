@@ -1,3 +1,5 @@
+(Still under development)
+
 # lask
 
 Ask LLMs right from the terminal.
@@ -107,7 +109,7 @@ Before using lask, you need to set up API keys for your preferred provider:
    # AWS Bedrock settings
    model_id = anthropic.claude-3-sonnet-20240229-v1:0
    region = us-east-1
-   
+
    [azure]
    # Azure OpenAI settings
    api_key = your-azure-api-key
