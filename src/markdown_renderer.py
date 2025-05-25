@@ -137,7 +137,9 @@ class MarkdownRenderer:
 
         # Code blocks
         def replace_code_block(match):
-            _language = match.group(1)  # We capture but don't currently use the language
+            _language = match.group(
+                1
+            )  # We capture but don't currently use the language
             content = match.group(2)
             lines = content.split("\n")
             formatted_lines = [
