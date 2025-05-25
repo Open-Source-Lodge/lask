@@ -2,7 +2,6 @@
 Configure pytest for the lask test suite.
 """
 
-import os
 import sys
 from pathlib import Path
 

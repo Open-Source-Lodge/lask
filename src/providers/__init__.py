@@ -3,7 +3,7 @@ Provider modules for lask
 """
 
 from importlib import import_module
-from typing import cast, Union, Iterator
+from typing import Union, Iterator
 from types import ModuleType
 
 from src.config import LaskConfig
