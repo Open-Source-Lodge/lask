@@ -25,9 +25,7 @@ def call_api(config: LaskConfig, prompt: str) -> str:
     openai_config = config.get_provider_config("openai")
 
     # Try to get API key from environment variable first, then from config
-    api_key: Optional[str] = (
-        openai_config.api_key or os.getenv("OPENAI_API_KEY")
-    )
+    api_key: Optional[str] = openai_config.api_key or os.getenv("OPENAI_API_KEY")
     if not api_key:
         print(
             "Error: Please add 'api_key' under [default] or [openai] section in ~/.lask-config, or set the OPENAI_API_KEY environment variable in your shell."

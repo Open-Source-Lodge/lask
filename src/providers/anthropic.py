@@ -28,9 +28,7 @@ def call_api(config: LaskConfig, prompt: str) -> str:
     anthropic_config = config.get_provider_config("anthropic")
 
     # Get API key
-    api_key: Optional[str] = (
-        os.getenv("ANTHROPIC_API_KEY") or anthropic_config.api_key
-    )
+    api_key: Optional[str] = os.getenv("ANTHROPIC_API_KEY") or anthropic_config.api_key
     if not api_key:
         print(
             "Error: Please set the ANTHROPIC_API_KEY environment variable or add 'api_key' under [anthropic] section in ~/.lask-config"

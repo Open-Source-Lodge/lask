@@ -28,9 +28,7 @@ def call_api(config: LaskConfig, prompt: str) -> str:
     azure_config = config.get_provider_config("azure")
 
     # Get API key
-    api_key: Optional[str] = (
-        os.getenv("AZURE_OPENAI_API_KEY") or azure_config.api_key
-    )
+    api_key: Optional[str] = os.getenv("AZURE_OPENAI_API_KEY") or azure_config.api_key
     if not api_key:
         print(
             "Error: Please set the AZURE_OPENAI_API_KEY environment variable or add 'api_key' under [azure] section in ~/.lask-config"
