@@ -2,7 +2,7 @@
 
 Ask LLMs right from the terminal.
 
-Supports multiple providers like OpenAI, Anthropic, AWS Bedrock
+Supports multiple providers like OpenAI, Anthropic, AWS Bedrock, and Azure OpenAI
 
 
 ## Usage
@@ -78,6 +78,11 @@ Before using lask, you need to set up API keys for your preferred provider:
    **For AWS Bedrock:**
    Ensure your AWS credentials are properly configured.
 
+   **For Azure OpenAI:**
+   ```bash
+   export AZURE_OPENAI_API_KEY='your-api-key-here'
+   ```
+
    To make these permanent, add the export line to your `~/.bashrc`, `~/.zshrc`, or equivalent shell configuration file.
 
    **Windows users** can use `set` (CMD) or `$env:` (PowerShell) instead of `export`.
@@ -86,7 +91,7 @@ Before using lask, you need to set up API keys for your preferred provider:
 
    ```ini
    [default]
-   provider = openai  # Options: openai, anthropic, aws
+   provider = openai  # Options: openai, anthropic, aws, azure
    api_key = your-api-key-here
    model = gpt-4.1
 
@@ -102,6 +107,12 @@ Before using lask, you need to set up API keys for your preferred provider:
    # AWS Bedrock settings
    model_id = anthropic.claude-3-sonnet-20240229-v1:0
    region = us-east-1
+   
+   [azure]
+   # Azure OpenAI settings
+   api_key = your-azure-api-key
+   resource_name = your-resource-name
+   deployment_id = your-deployment-id
    ```
 
    This INI configuration file allows you to set your preferred provider, API keys, and customize the models and parameters for each provider.
@@ -166,6 +177,18 @@ model_id = anthropic.claude-3-sonnet-20240229-v1:0
 region = us-east-1
 temperature = 0.7
 max_tokens = 4096
+```
+
+#### Azure OpenAI
+
+```ini
+[azure]
+api_key = your-azure-api-key
+resource_name = your-resource-name
+deployment_id = your-deployment-id
+api_version = 2023-05-15
+temperature = 0.7
+max_tokens = 2000
 ```
 
 ## Developing

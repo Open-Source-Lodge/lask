@@ -8,6 +8,7 @@ authors = [
     {name = "Open Source Lodge"}
 ]
 dependencies = ["requests>=2.32.3", "setuptools>=80.8.0"]
+classifiers = ["Programming Language :: Python :: 3", "Operating System :: OS Independent"]
 license = {text = "GNU General Public License v3 (GPLv3)"}
 
 [project.urls]
