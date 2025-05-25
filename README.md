@@ -22,6 +22,7 @@ lask What movie is this quote from\? \"that still only counts as one\"
 - Minimal dependencies (only requires the `requests` library, and `boto3` for AWS)
 - Easy installation via pip
 - Direct output to your terminal
+- Streaming responses for real-time output
 
 ## Installation
 
@@ -148,6 +149,20 @@ Set your preferred provider in the `[default]` section:
 provider = openai  # Options: openai, anthropic, aws
 ```
 
+### Streaming Configuration
+
+By default, responses are streamed in real-time to your terminal. You can disable streaming in your configuration file:
+
+```ini
+[openai]
+streaming = false  # Disable streaming for OpenAI
+
+[anthropic]
+streaming = false  # Disable streaming for Anthropic
+```
+
+When streaming is enabled, you'll see the response appearing in real-time as it's generated. When disabled, you'll get the complete response only after it's fully generated.
+
 ### Provider-specific Configuration
 
 Each provider has its own section where you can set provider-specific options:
@@ -160,6 +175,7 @@ api_key = your-openai-api-key
 model = gpt-4.1
 temperature = 0.7
 max_tokens = 2000
+streaming = true  # Enable streaming (this is the default)
 ```
 
 #### Anthropic
@@ -170,6 +186,7 @@ api_key = your-anthropic-api-key
 model = claude-3-opus-20240229
 temperature = 0.7
 max_tokens = 4096
+streaming = true  # Enable streaming (this is the default)
 ```
 
 #### AWS Bedrock

@@ -4,13 +4,14 @@ Azure OpenAI provider module for lask
 
 import os
 import sys
-from typing import Dict, Any, Optional
+import json
+from typing import Dict, Any, Optional, Union, Iterator
 import requests
 
 from src.config import LaskConfig
 
 
-def call_api(config: LaskConfig, prompt: str) -> str:
+def call_api(config: LaskConfig, prompt: str) -> Union[str, Iterator[str]]:
     """
     Call the Azure OpenAI API with the given prompt.
 
@@ -19,7 +20,8 @@ def call_api(config: LaskConfig, prompt: str) -> str:
         prompt (str): The user prompt
 
     Returns:
-        str: The response from the Azure OpenAI API
+        Union[str, Iterator[str]]: The response from the Azure OpenAI API,
+                                  either full text or a stream iterator
 
     Raises:
         Exception: If there's an error calling the Azure OpenAI API
@@ -43,6 +45,9 @@ def call_api(config: LaskConfig, prompt: str) -> str:
         )
         sys.exit(1)
 
+    # Check if streaming is enabled (default to True)
+    streaming: bool = azure_config.get("streaming", True)
+
     deployment_id: Optional[str] = azure_config.deployment_id
     if not deployment_id:
         print(
@@ -57,7 +62,10 @@ def call_api(config: LaskConfig, prompt: str) -> str:
 
     headers: Dict[str, str] = {"api-key": api_key, "Content-Type": "application/json"}
 
-    data: Dict[str, Any] = {"messages": [{"role": "user", "content": prompt}]}
+    data: Dict[str, Any] = {
+        "messages": [{"role": "user", "content": prompt}],
+        "stream": streaming,
+    }
 
     # Add optional parameters if specified
     if azure_config.temperature is not None:
@@ -66,9 +74,73 @@ def call_api(config: LaskConfig, prompt: str) -> str:
         data["max_tokens"] = azure_config.max_tokens
 
     print(f"Prompting Azure OpenAI API with deployment {deployment_id}: {prompt}\n")
-    response: requests.Response = requests.post(endpoint, headers=headers, json=data)
+
+    if streaming:
+        return stream_azure_response(endpoint, headers, data)
+    else:
+        return non_streaming_azure_response(endpoint, headers, data)
+
+
+def stream_azure_response(
+    endpoint: str, headers: Dict[str, str], data: Dict[str, Any]
+) -> Iterator[str]:
+    """
+    Stream the response from Azure OpenAI API.
+
+    Args:
+        endpoint (str): The Azure OpenAI API endpoint
+        headers (Dict[str, str]): Request headers
+        data (Dict[str, Any]): Request data
+
+    Yields:
+        str: Chunks of the response as they arrive
+    """
+    response = requests.post(endpoint, headers=headers, json=data, stream=True)
+
     if response.status_code != 200:
         print(f"Error: {response.status_code} {response.text}")
         sys.exit(1)
+
+    for line in response.iter_lines():
+        if line:
+            line_str = line.decode("utf-8")
+            # Skip the "data: [DONE]" message
+            if line_str == "data: [DONE]":
+                continue
+            # Skip empty data lines
+            if line_str.startswith("data: "):
+                json_str = line_str[6:]  # Remove "data: " prefix
+                try:
+                    chunk = json.loads(json_str)
+                    delta = chunk.get("choices", [{}])[0].get("delta", {})
+                    if "content" in delta:
+                        yield delta["content"]
+                except json.JSONDecodeError:
+                    print(f"Warning: Could not parse JSON: {json_str}")
+
+
+def non_streaming_azure_response(
+    endpoint: str, headers: Dict[str, str], data: Dict[str, Any]
+) -> str:
+    """
+    Get a non-streaming response from Azure OpenAI API.
+
+    Args:
+        endpoint (str): The Azure OpenAI API endpoint
+        headers (Dict[str, str]): Request headers
+        data (Dict[str, Any]): Request data without streaming
+
+    Returns:
+        str: The full response
+    """
+    # Disable streaming for non-streaming request
+    data["stream"] = False
+
+    response: requests.Response = requests.post(endpoint, headers=headers, json=data)
+
+    if response.status_code != 200:
+        print(f"Error: {response.status_code} {response.text}")
+        sys.exit(1)
+
     result: Dict[str, Any] = response.json()
     return result["choices"][0]["message"]["content"].strip()

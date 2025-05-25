@@ -16,6 +16,7 @@ class ProviderConfig:
     model: Optional[str] = None
     temperature: Optional[float] = None
     max_tokens: Optional[int] = None
+    streaming: bool = True
 
     # Provider-specific settings
     # AWS Bedrock specific
