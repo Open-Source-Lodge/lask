@@ -2,20 +2,9 @@
 # This file should be placed at ~/.lask-config
 
 [default]
-# The provider to use for LLM requests
+# The default chosen provider to use for LLM requests
 # Options: openai, anthropic, aws, azure
 provider = openai
-
-# Default API key (you can also set provider-specific keys in each section)
-# If not provided, lask will look for provider-specific environment variables
-api_key = your-api-key-here
-
-# Default model to use (can be overridden in provider-specific sections)
-model = gpt-4.1
-
-# Common options that apply to all providers (can be overridden in provider sections)
-# temperature = 0.7
-# max_tokens = 2000
 
 # OpenAI-specific configuration
 [openai]

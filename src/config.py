@@ -40,10 +40,6 @@ class LaskConfig:
     """Configuration for lask."""
     # Default provider
     provider: str = "openai"
-    # Default model (provider-dependent)
-    model: str = "gpt-4.1"
-    # Global API key, can be overridden by provider-specific keys
-    api_key: Optional[str] = None
     # Provider-specific configurations
     providers: Dict[str, ProviderConfig] = field(default_factory=dict)
 
@@ -107,7 +103,7 @@ class LaskConfig:
         if provider not in self.providers:
             self.providers[provider] = ProviderConfig()
         return self.providers[provider]
-    
+
     def get(self, key: str, default: Any = None) -> Any:
         """
         Get a configuration value.
@@ -120,7 +116,7 @@ class LaskConfig:
             Any: The configuration value
         """
         return getattr(self, key, default) if hasattr(self, key) else default
-    
+
     def __getitem__(self, key: str) -> Any:
         """Allow dictionary-like access to attributes."""
         if key == "providers":
