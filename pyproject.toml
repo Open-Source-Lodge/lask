@@ -19,7 +19,7 @@ Issue = "https://github.com/Open-Source-Lodge/lask/issues"
 Changelog = "https://github.com/Open-Source-Lodge/lask/releases"
 
 [project.scripts]
-lask = "lask:main"
+lask = "src.main:main"
 
 [project.optional-dependencies]
 aws = ["boto3>=1.28.0"]

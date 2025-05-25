@@ -18,6 +18,7 @@ model = gpt-4.1
 
 # temperature = 0.7
 # max_tokens = 2000
+# streaming = true  # Set to false to disable real-time streaming responses
 
 # Anthropic-specific configuration
 [anthropic]
@@ -31,6 +32,7 @@ model = claude-3-opus-20240229
 
 # temperature = 0.7
 # max_tokens = 4096
+# streaming = true  # Set to false to disable real-time streaming responses
 
 # Azure OpenAI configuration
 [azure]
@@ -45,6 +47,7 @@ deployment_id = your-deployment-id
 # api_version = 2023-05-15
 # temperature = 0.7
 # max_tokens = 2000
+# streaming = true  # Set to false to disable real-time streaming responses
 
 # AWS Bedrock configuration
 [aws]
@@ -63,3 +66,4 @@ region = us-east-1
 
 # temperature = 0.7
 # max_tokens = 4096
+# streaming = true  # Set to false to disable real-time streaming responses

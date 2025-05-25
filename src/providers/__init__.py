@@ -3,7 +3,7 @@ Provider modules for lask
 """
 
 from importlib import import_module
-from typing import cast
+from typing import Union, Iterator
 from types import ModuleType
 
 from src.config import LaskConfig
@@ -30,7 +30,9 @@ def get_provider_module(provider_name: str) -> ModuleType:
         )
 
 
-def call_provider_api(provider_name: str, config: LaskConfig, prompt: str) -> str:
+def call_provider_api(
+    provider_name: str, config: LaskConfig, prompt: str
+) -> Union[str, Iterator[str]]:
     """
     Call the appropriate provider API based on the provider name.
 
@@ -40,10 +42,11 @@ def call_provider_api(provider_name: str, config: LaskConfig, prompt: str) -> st
         prompt (str): The user prompt
 
     Returns:
-        str: The response from the provider
+        Union[str, Iterator[str]]: The response from the provider, either as a full string
+                                  or as a stream of string chunks
 
     Raises:
         ImportError: If the provider is not supported
     """
     provider_module = get_provider_module(provider_name)
-    return cast(str, provider_module.call_api(config, prompt))
+    return provider_module.call_api(config, prompt)
