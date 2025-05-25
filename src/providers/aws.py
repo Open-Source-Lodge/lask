@@ -5,12 +5,14 @@ import sys
 import json
 from typing import Dict, Any, cast
 
-def call_api(config: Dict[str, Any], prompt: str) -> str:
+from src.config import LaskConfig
+
+def call_api(config: LaskConfig, prompt: str) -> str:
     """
     Call the AWS Bedrock API with the given prompt.
     
     Args:
-        config (Dict[str, Any]): Configuration dictionary
+        config (LaskConfig): Configuration object
         prompt (str): The user prompt
         
     Returns:
@@ -29,14 +31,12 @@ def call_api(config: Dict[str, Any], prompt: str) -> str:
         print("Or install lask with AWS support: pip install lask[aws]")
         sys.exit(1)
 
-    # Check if we have provider-specific config
-    aws_config: Dict[str, Any] = {}
-    if 'providers' in config and 'aws' in config['providers']:
-        aws_config = config['providers']['aws']
+    # Get provider-specific config
+    aws_config = config.get_provider_config("aws")
 
     # Get the model ID
-    model_id: str = aws_config.get("model_id", "anthropic.claude-3-sonnet-20240229-v1:0")
-    region: str = aws_config.get("region", "us-east-1")
+    model_id: str = aws_config.model_id or "anthropic.claude-3-sonnet-20240229-v1:0"
+    region: str = aws_config.region or "us-east-1"
 
     # Create a Bedrock Runtime client
     bedrock = boto3.client(
@@ -50,30 +50,30 @@ def call_api(config: Dict[str, Any], prompt: str) -> str:
     if "anthropic" in model_id:
         body = {
             "anthropic_version": "bedrock-2023-05-31",
-            "max_tokens": int(aws_config.get("max_tokens", 4096)),
+            "max_tokens": aws_config.max_tokens or 4096,
             "messages": [
                 {"role": "user", "content": prompt}
             ]
         }
-        if 'temperature' in aws_config:
-            body['temperature'] = float(aws_config['temperature'])
+        if aws_config.temperature is not None:
+            body['temperature'] = aws_config.temperature
     elif "amazon" in model_id:
         body = {
             "inputText": prompt,
             "textGenerationConfig": {
-                "maxTokenCount": int(aws_config.get("max_tokens", 4096))
+                "maxTokenCount": aws_config.max_tokens or 4096
             }
         }
-        if 'temperature' in aws_config:
-            body['textGenerationConfig']['temperature'] = float(aws_config['temperature'])
+        if aws_config.temperature is not None:
+            body['textGenerationConfig']['temperature'] = aws_config.temperature
     else:
         # Default format for other models
         body = {
             "prompt": prompt,
-            "max_tokens": int(aws_config.get("max_tokens", 4096))
+            "max_tokens": aws_config.max_tokens or 4096
         }
-        if 'temperature' in aws_config:
-            body['temperature'] = float(aws_config['temperature'])
+        if aws_config.temperature is not None:
+            body['temperature'] = aws_config.temperature
 
     print(f"Prompting AWS Bedrock with model {model_id}: {prompt}\n")
     try:

@@ -6,12 +6,14 @@ import sys
 from typing import Dict, Any, Optional
 import requests
 
-def call_api(config: Dict[str, Any], prompt: str) -> str:
+from src.config import LaskConfig
+
+def call_api(config: LaskConfig, prompt: str) -> str:
     """
     Call the Anthropic API with the given prompt.
     
     Args:
-        config (Dict[str, Any]): Configuration dictionary
+        config (LaskConfig): Configuration object
         prompt (str): The user prompt
         
     Returns:
@@ -20,19 +22,17 @@ def call_api(config: Dict[str, Any], prompt: str) -> str:
     Raises:
         Exception: If there's an error calling the Anthropic API
     """
-    # Check if we have provider-specific config
-    anthropic_config: Dict[str, Any] = {}
-    if 'providers' in config and 'anthropic' in config['providers']:
-        anthropic_config = config['providers']['anthropic']
+    # Get provider-specific config
+    anthropic_config = config.get_provider_config("anthropic")
 
     # Get API key
-    api_key: Optional[str] = os.getenv("ANTHROPIC_API_KEY") or anthropic_config.get("api_key") or config.get("api_key")
+    api_key: Optional[str] = os.getenv("ANTHROPIC_API_KEY") or anthropic_config.api_key or config.api_key
     if not api_key:
         print("Error: Please set the ANTHROPIC_API_KEY environment variable or add 'api_key' under [anthropic] section in ~/.lask-config")
         sys.exit(1)
 
     # Get model (Claude by default)
-    model: str = anthropic_config.get("model", "claude-3-opus-20240229")
+    model: str = anthropic_config.model or "claude-3-opus-20240229"
 
     headers: Dict[str, str] = {
         "x-api-key": api_key,
@@ -45,11 +45,11 @@ def call_api(config: Dict[str, Any], prompt: str) -> str:
         "messages": [
             {"role": "user", "content": prompt}
         ],
-        "max_tokens": int(anthropic_config.get("max_tokens", 4096))
+        "max_tokens": anthropic_config.max_tokens or 4096
     }
 
-    if 'temperature' in anthropic_config:
-        data['temperature'] = float(anthropic_config['temperature'])
+    if anthropic_config.temperature is not None:
+        data['temperature'] = anthropic_config.temperature
 
     print(f"Prompting Anthropic API with model {model}: {prompt}\n")
     response: requests.Response = requests.post(
