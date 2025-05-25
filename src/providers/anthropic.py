@@ -29,7 +29,7 @@ def call_api(config: LaskConfig, prompt: str) -> str:
 
     # Get API key
     api_key: Optional[str] = (
-        os.getenv("ANTHROPIC_API_KEY") or anthropic_config.api_key or config.api_key
+        os.getenv("ANTHROPIC_API_KEY") or anthropic_config.api_key
     )
     if not api_key:
         print(

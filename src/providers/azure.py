@@ -29,7 +29,7 @@ def call_api(config: LaskConfig, prompt: str) -> str:
 
     # Get API key
     api_key: Optional[str] = (
-        os.getenv("AZURE_OPENAI_API_KEY") or azure_config.api_key or config.api_key
+        os.getenv("AZURE_OPENAI_API_KEY") or azure_config.api_key
     )
     if not api_key:
         print(

@@ -26,7 +26,7 @@ def call_api(config: LaskConfig, prompt: str) -> str:
 
     # Try to get API key from environment variable first, then from config
     api_key: Optional[str] = (
-        openai_config.api_key or config.api_key or os.getenv("OPENAI_API_KEY")
+        openai_config.api_key or os.getenv("OPENAI_API_KEY")
     )
     if not api_key:
         print(
@@ -35,7 +35,7 @@ def call_api(config: LaskConfig, prompt: str) -> str:
         sys.exit(1)
 
     # Get model from config or use default
-    model: str = openai_config.model or config.model or "gpt-4.1"
+    model: str = openai_config.model or "gpt-4.1"
 
     headers: Dict[str, str] = {
         "Authorization": f"Bearer {api_key}",
