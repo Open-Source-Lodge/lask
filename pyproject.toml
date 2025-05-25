@@ -36,7 +36,14 @@ build_command = "pip install build && python -m build"
 requires = ["setuptools>=61.0"]
 build-backend = "setuptools.build_meta"
 
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = "test_*.py"
+python_classes = "Test*"
+python_functions = "test_*"
+
 [dependency-groups]
 dev = [
     "ruff>=0.11.11",
+    "pytest>=7.0.0",
 ]
