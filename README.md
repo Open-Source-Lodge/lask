@@ -4,7 +4,7 @@ A CLI tool to interact with OpenAI's ChatGPT and other LLMs directly from your t
 
 
 ## Usage
-Ensure you have `OPENAI_API_KEY` in your environment variables, then you can use `lask` to send prompts to the LLM.
+Ensure you have `OPENAI_API_KEY` in your environment variables or configure it in `~/.lask-config`, then you can use `lask` to send prompts to the LLM.
 
 ```bash
 lask What movie is this quote from\? \"that still only counts as one\"
@@ -75,14 +75,30 @@ Before using lask, you need to set up your OpenAI API key:
    $env:OPENAI_API_KEY='your-api-key-here'
    ```
 
+3. Alternatively, create a configuration file at `~/.lask-config` in INI format:
+
+   ```ini
+   [default]
+   api_key = your-api-key-here
+   model = gpt-4.1
+   ```
+
+   This INI configuration file allows you to set your API key and customize the model used by lask.
+
+   An example configuration file with comments is available in the `examples/example.lask-config` file.
+
 
 ## API Key Issues
 
 If you see an error about the API key:
 
-1. Double-check that you've correctly set the `OPENAI_API_KEY` environment variable
+1. Double-check that you've correctly set the `OPENAI_API_KEY` environment variable or configured it in `~/.lask-config`
 2. Verify your API key is valid and has enough credits
 
+
+## Configuration
+
+You can find a fully commented example configuration file in the `examples/lask-config.example` directory of this repository. Copy it to your home directory as `~/.lask-config` and customize it to your needs.
 
 ## Developing
 

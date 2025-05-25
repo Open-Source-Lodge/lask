@@ -1,0 +1,17 @@
+# Example configuration file for lask
+# This file should be placed at ~/.lask-config
+
+[default]
+# Your OpenAI API key. If not provided, lask will look for the OPENAI_API_KEY environment variable.
+# Get your API key from https://platform.openai.com/api-keys
+api_key = your-api-key-here
+
+# The OpenAI model to use for queries
+# Common options: gpt-3.5-turbo, gpt-4, gpt-4.1, gpt-4o
+model = gpt-4.1
+
+# Additional configuration options can be added here as the tool evolves
+
+# Example with commented out options:
+# temperature = 0.7
+# max_tokens = 2000

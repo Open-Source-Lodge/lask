@@ -19,3 +19,10 @@ Changelog = "https://github.com/Open-Source-Lodge/lask/releases"
 
 [project.scripts]
 lask = "lask:main"
+
+[tool.semantic_release]
+version_variables = ["pyproject.toml:version"]
+branch = "main"
+upload_to_pypi = false
+upload_to_release = true
+build_command = "pip install build && python -m build"
