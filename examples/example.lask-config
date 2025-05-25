@@ -6,6 +6,11 @@
 # Options: openai, anthropic, aws, azure
 provider = openai
 
+# Output formatting options
+# colorize_markdown = true  # Enable Markdown syntax highlighting in output
+# use_colors = true         # Enable colored output in terminal
+# use_rich = true           # Use rich library for enhanced rendering if available
+
 # OpenAI-specific configuration
 [openai]
 # Your OpenAI API key. If not specified, falls back to the default api_key
