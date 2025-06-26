@@ -49,9 +49,25 @@ def call_api(config: LaskConfig, prompt: str) -> Union[str, Iterator[str]]:
         "Content-Type": "application/json",
     }
 
+    messages = []
+
+    # Add system prompt if available
+    provider_system_prompt = anthropic_config.system_prompt
+    default_system_prompt = config.system_prompt
+
+    # For Anthropic, system prompts are handled differently
+    # Claude uses a "system" role message at the start of the conversation
+    if provider_system_prompt is not None:
+        messages.append({"role": "system", "content": provider_system_prompt})
+    elif default_system_prompt is not None:
+        messages.append({"role": "system", "content": default_system_prompt})
+
+    # Add user message
+    messages.append({"role": "user", "content": prompt})
+
     data: Dict[str, Any] = {
         "model": model,
-        "messages": [{"role": "user", "content": prompt}],
+        "messages": messages,
         "max_tokens": anthropic_config.max_tokens or 4096,
         "stream": streaming,
     }

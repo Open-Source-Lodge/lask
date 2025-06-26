@@ -6,6 +6,10 @@
 # Options: openai, anthropic, aws, azure
 provider = openai
 
+# Default system prompt that applies to all providers unless overridden
+# This lets you customize how the AI responds to all your queries
+# system_prompt = Always answer questions concisely and directly.
+
 # OpenAI-specific configuration
 [openai]
 # Your OpenAI API key. If not specified, falls back to the default api_key
@@ -19,6 +23,9 @@ model = gpt-4.1
 # temperature = 0.7
 # max_tokens = 2000
 # streaming = true  # Set to false to disable real-time streaming responses
+
+# Provider-specific system prompt that overrides the default
+# system_prompt = You are a helpful AI assistant. Always provide clear, accurate, and concise information.
 
 # Anthropic-specific configuration
 [anthropic]
@@ -34,6 +41,9 @@ model = claude-3-opus-20240229
 # max_tokens = 4096
 # streaming = true  # Set to false to disable real-time streaming responses
 
+# Provider-specific system prompt that overrides the default
+# system_prompt = You are Claude, an AI assistant by Anthropic. Always provide information that is helpful, harmless, and honest.
+
 # Azure OpenAI configuration
 [azure]
 # Your Azure OpenAI API key. If not specified, falls back to the default api_key
@@ -48,6 +58,9 @@ deployment_id = your-deployment-id
 # temperature = 0.7
 # max_tokens = 2000
 # streaming = true  # Set to false to disable real-time streaming responses
+
+# Provider-specific system prompt that overrides the default
+# system_prompt = You are an Azure OpenAI assistant. Always be concise and provide clear explanations.
 
 # AWS Bedrock configuration
 [aws]
@@ -67,3 +80,6 @@ region = us-east-1
 # temperature = 0.7
 # max_tokens = 4096
 # streaming = true  # Set to false to disable real-time streaming responses
+
+# Provider-specific system prompt that overrides the default
+# system_prompt = Respond as if you're a technical consultant. Be direct and to the point. Use bullet points when appropriate.

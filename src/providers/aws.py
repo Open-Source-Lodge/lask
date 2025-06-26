@@ -50,25 +50,53 @@ def call_api(config: LaskConfig, prompt: str) -> Union[str, Iterator[str]]:
     # Prepare the request body based on the model provider
     body: Dict[str, Any] = {}
 
+    # Get system prompts
+    provider_system_prompt = aws_config.system_prompt
+    default_system_prompt = config.system_prompt
+
     if "anthropic" in model_id:
+        messages = []
+
+        # Add system prompt if available
+        if provider_system_prompt is not None:
+            messages.append({"role": "system", "content": provider_system_prompt})
+        elif default_system_prompt is not None:
+            messages.append({"role": "system", "content": default_system_prompt})
+
+        # Add user message
+        messages.append({"role": "user", "content": prompt})
+
         body = {
             "anthropic_version": "bedrock-2023-05-31",
             "max_tokens": aws_config.max_tokens or 4096,
-            "messages": [{"role": "user", "content": prompt}],
+            "messages": messages,
             "stream": streaming,
         }
         if aws_config.temperature is not None:
             body["temperature"] = aws_config.temperature
     elif "amazon" in model_id:
+        # For Amazon models, we might need to prepend the system prompt to the input text
+        input_text = prompt
+        if provider_system_prompt is not None:
+            input_text = f"System: {provider_system_prompt}\n\nUser: {prompt}"
+        elif default_system_prompt is not None:
+            input_text = f"System: {default_system_prompt}\n\nUser: {prompt}"
+
         body = {
-            "inputText": prompt,
+            "inputText": input_text,
             "textGenerationConfig": {"maxTokenCount": aws_config.max_tokens or 4096},
         }
         if aws_config.temperature is not None:
             body["textGenerationConfig"]["temperature"] = aws_config.temperature
     else:
         # Default format for other models
-        body = {"prompt": prompt, "max_tokens": aws_config.max_tokens or 4096}
+        system_text = ""
+        if provider_system_prompt is not None:
+            system_text = f"System: {provider_system_prompt}\n\n"
+        elif default_system_prompt is not None:
+            system_text = f"System: {default_system_prompt}\n\n"
+
+        body = {"prompt": f"{system_text}User: {prompt}", "max_tokens": aws_config.max_tokens or 4096}
         if aws_config.temperature is not None:
             body["temperature"] = aws_config.temperature
 
