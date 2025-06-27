@@ -96,7 +96,10 @@ def call_api(config: LaskConfig, prompt: str) -> Union[str, Iterator[str]]:
         elif default_system_prompt is not None:
             system_text = f"System: {default_system_prompt}\n\n"
 
-        body = {"prompt": f"{system_text}User: {prompt}", "max_tokens": aws_config.max_tokens or 4096}
+        body = {
+            "prompt": f"{system_text}User: {prompt}",
+            "max_tokens": aws_config.max_tokens or 4096,
+        }
         if aws_config.temperature is not None:
             body["temperature"] = aws_config.temperature
 
