@@ -71,28 +71,33 @@ Before using lask, you need to set up API keys for your preferred provider:
    ```ini
    [default]
    provider = openai  # Options: openai, anthropic, aws, azure
+   system_prompt = Always answer questions concisely.  # Default system prompt for all providers
 
    [openai]
    # OpenAI-specific settings
    api_key = your-api-key-here
    model = gpt-4.1
+   system_prompt = You are a helpful AI assistant.  # Overrides default system prompt
 
    [anthropic]
    # Anthropic-specific settings
    api_key = your-api-key-here
    model = claude-3-opus-20240229
+   system_prompt = You are Claude, an AI assistant by Anthropic.
 
    [aws]
    # AWS Bedrock settings
    api_key = your-api-key-here
    model_id = anthropic.claude-3-sonnet-20240229-v1:0
    region = us-east-1
+   system_prompt = Respond as a technical consultant.
 
    [azure]
    # Azure OpenAI settings
    api_key = your-azure-api-key
    resource_name = your-resource-name
    deployment_id = your-deployment-id
+   system_prompt = You are an Azure OpenAI assistant.
    ```
 
    This INI configuration file allows you to set your preferred provider, API keys, and customize the models and parameters for each provider.
@@ -163,6 +168,27 @@ streaming = false  # Disable streaming for Anthropic
 
 When streaming is enabled, you'll see the response appearing in real-time as it's generated. When disabled, you'll get the complete response only after it's fully generated.
 
+### System Prompts
+
+You can set system prompts at two levels:
+
+1. Default system prompt for all providers:
+   ```ini
+   [default]
+   system_prompt = Always answer questions concisely.
+   ```
+
+2. Provider-specific system prompts that override the default:
+   ```ini
+   [openai]
+   system_prompt = You are a helpful AI assistant.
+   ```
+
+System prompts allow you to set consistent behavior across all your interactions with the LLM. For example, you can use them to:
+- Specify a response style: "Always answer as short and concise as possible"
+- Set a persona: "You are a helpful assistant specialized in Python programming"
+- Request responses in a specific language: "Always respond in Spanish"
+
 ### Provider-specific Configuration
 
 Each provider has its own section where you can set provider-specific options:
@@ -176,6 +202,7 @@ model = gpt-4.1
 temperature = 0.7
 max_tokens = 2000
 streaming = true  # Enable streaming (this is the default)
+system_prompt = You are a helpful AI assistant.  # Provider-specific system prompt
 ```
 
 #### Anthropic
@@ -187,6 +214,7 @@ model = claude-3-opus-20240229
 temperature = 0.7
 max_tokens = 4096
 streaming = true  # Enable streaming (this is the default)
+system_prompt = You are Claude, an AI assistant by Anthropic.  # Provider-specific system prompt
 ```
 
 #### AWS Bedrock
@@ -197,6 +225,7 @@ model_id = anthropic.claude-3-sonnet-20240229-v1:0
 region = us-east-1
 temperature = 0.7
 max_tokens = 4096
+system_prompt = Respond as a technical consultant.  # Provider-specific system prompt
 ```
 
 #### Azure OpenAI
@@ -209,6 +238,7 @@ deployment_id = your-deployment-id
 api_version = 2023-05-15
 temperature = 0.7
 max_tokens = 2000
+system_prompt = You are an Azure OpenAI assistant.  # Provider-specific system prompt
 ```
 
 ## Developing

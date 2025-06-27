@@ -17,6 +17,7 @@ class ProviderConfig:
     temperature: Optional[float] = None
     max_tokens: Optional[int] = None
     streaming: bool = True
+    system_prompt: Optional[str] = None
 
     # Provider-specific settings
     # AWS Bedrock specific
@@ -46,6 +47,8 @@ class LaskConfig:
     provider: str = "openai"
     # Provider-specific configurations
     providers: Dict[str, ProviderConfig] = field(default_factory=dict)
+    # Default system prompt
+    system_prompt: Optional[str] = None
 
     # Class constants
     CONFIG_PATH: ClassVar[Path] = Path.home() / ".lask-config"
@@ -70,7 +73,11 @@ class LaskConfig:
                 if "default" in parser:
                     for key, value in parser["default"].items():
                         if hasattr(config, key):
-                            setattr(config, key, value)
+                            # Handle type conversion for specific fields
+                            if key in ["system_prompt"]:
+                                setattr(config, key, value)
+                            else:
+                                setattr(config, key, value)
 
                 # Load provider-specific sections
                 for section in parser.sections():
@@ -83,6 +90,8 @@ class LaskConfig:
                                     setattr(provider_config, key, float(value))
                                 elif key == "max_tokens" and value:
                                     setattr(provider_config, key, int(value))
+                                elif key == "system_prompt" and value:
+                                    setattr(provider_config, key, value)
                                 else:
                                     setattr(provider_config, key, value)
                         config.providers[section] = provider_config

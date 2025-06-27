@@ -1,0 +1,34 @@
+# Lask Configuration File
+# Place this at ~/.lask-config to use globally
+
+[default]
+provider = openai
+system_prompt = Always answer questions concisely and directly.
+
+[openai]
+model = gpt-4
+temperature = 0.7
+max_tokens = 2000
+# Provider-specific system prompt overrides the default
+system_prompt = You are a helpful AI assistant. Always provide clear, accurate, and concise information.
+
+[anthropic]
+model = claude-3-opus-20240229
+temperature = 0.5
+max_tokens = 4000
+system_prompt = You are Claude, an AI assistant by Anthropic. Always provide information that is helpful, harmless, and honest.
+
+[aws]
+model_id = anthropic.claude-3-sonnet-20240229-v1:0
+region = us-east-1
+temperature = 0.5
+max_tokens = 4000
+system_prompt = Respond as if you're a technical consultant. Be direct and to the point. Use bullet points when appropriate.
+
+[azure]
+resource_name = your-resource-name
+deployment_id = your-deployment-id
+api_version = 2023-05-15
+temperature = 0.7
+max_tokens = 2000
+system_prompt = You are an Azure OpenAI assistant. Always be concise and provide clear explanations.
