@@ -14,8 +14,127 @@ Features:
 import sys
 from typing import Union, Iterator
 
+import configparser
 from src.config import LaskConfig
 from src.providers import call_provider_api
+
+
+def prompt_for_config_creation() -> None:
+    """
+    Prompt the user to create a configuration file with preset options.
+    """
+    print("\nNo configuration file found at ~/.lask-config")
+    print("\nWould you like to create a configuration file? Choose an option:")
+    print("  0. No, don't create a config file (or press Enter)")
+    print("  1. Yes, create a config with 'Short and concise' system prompt")
+    print("  2. Yes, create a config that always responds in a specific language")
+    print("  3. Yes, create a config with a detailed, helpful assistant")
+    print("  4. Yes, create a minimal config (just API keys)")
+    print("  5. Yes, create a config with your own custom system prompt")
+
+    choice = input("\nEnter your choice (0-5): ").strip()
+
+    # Default to 0 if no input or invalid input
+    if not choice or choice == "0" or choice.lower() == "no":
+        print("No configuration file created. You can create one manually later.")
+        return
+
+    # Create a ConfigParser object
+    config = configparser.ConfigParser()
+    config["default"] = {
+        "provider": "openai",
+    }
+
+    # Provider section with placeholders for API keys
+    config["openai"] = {
+        "api_key": "YOUR_OPENAI_API_KEY",
+        "model": "gpt-4o",
+        "temperature": "0.7",
+        "streaming": "true",
+    }
+
+    # Add other providers as commented examples
+    config["anthropic"] = {
+        "api_key": "YOUR_ANTHROPIC_API_KEY",
+        "model": "claude-3-opus-20240229",
+        "temperature": "0.7",
+        "streaming": "true",
+    }
+
+    config["aws"] = {
+        "api_key": "YOUR_AWS_API_KEY",
+        "region": "us-east-1",
+        "model_id": "anthropic.claude-3-sonnet-20240229-v1:0",
+        "temperature": "0.7",
+        "streaming": "true",
+    }
+
+    config["azure"] = {
+        "api_key": "YOUR_AZURE_API_KEY",
+        "resource_name": "your-resource-name",
+        "deployment_id": "your-deployment-id",
+        "api_version": "2023-05-15",
+        "model": "gpt-4",
+        "temperature": "0.7",
+        "streaming": "true",
+    }
+
+    # Add system prompt based on choice
+    if choice == "1":
+        config["default"]["system_prompt"] = (
+            "Provide short, concise responses without unnecessary details."
+        )
+
+    elif choice == "2":
+        language = input(
+            "Enter the language you want responses in (e.g., Spanish, French, German): "
+        ).strip()
+        config["default"]["system_prompt"] = (
+            f"Always respond in {language}, regardless of the language used in the prompt."
+        )
+
+    elif choice == "3":
+        config["default"]["system_prompt"] = (
+            "You are a helpful, detailed assistant. Provide comprehensive responses with examples and explanations when appropriate. Be thorough and clear in your communication."
+        )
+
+    elif choice == "4":
+        # Minimal config, no system prompt
+        pass
+
+    elif choice == "5":
+        print("\nWrite a custom system prompt that defines the assistant's behavior.")
+        print("Examples:")
+        print("  - You are an expert programmer who explains code in detail")
+        print("  - You are a creative writing assistant who helps with story ideas")
+        print("  - You are a concise technical expert who responds with bullet points")
+        custom_prompt = input("\nEnter your custom system prompt: ").strip()
+        config["openai"]["system_prompt"] = custom_prompt
+
+    else:
+        print("Invalid choice. No configuration file created.")
+        return
+
+    # Write the configuration to file
+    try:
+        with open(LaskConfig.CONFIG_PATH, "w") as configfile:
+            config.write(configfile)
+
+        print(f"\nConfiguration file created at {LaskConfig.CONFIG_PATH}")
+        print(
+            "Please edit this file to add your API keys and customize settings as needed."
+        )
+        print("\nThis configuration includes settings for all supported providers:")
+        print("  - OpenAI (default)")
+        print("  - Anthropic (Claude)")
+        print("  - AWS Bedrock")
+        print("  - Azure OpenAI")
+        print("\nYou can change the default provider in the [default] section.")
+        sys.exit(0)
+
+    except Exception as e:
+        print(f"Error creating configuration file: {e}")
+        sys.exit(1)
 
 
 def main() -> None:
@@ -24,7 +143,14 @@ def main() -> None:
     Parses command line arguments, loads configuration,
     and calls the appropriate provider API.
     """
+    # If no arguments provided
     if len(sys.argv) < 2:
+        # Check if config file exists
+        if not LaskConfig.config_exists():
+            # No config file and no arguments, prompt to create config
+            prompt_for_config_creation()
+
+        # Still show usage message
         print("Usage: lask 'Your prompt here'")
         sys.exit(1)
 
