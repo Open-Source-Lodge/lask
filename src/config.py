@@ -55,6 +55,11 @@ class LaskConfig:
     SUPPORTED_PROVIDERS: ClassVar[List[str]] = ["openai", "anthropic", "aws", "azure"]
 
     @classmethod
+    def config_exists(cls) -> bool:
+        """Check if the config file exists."""
+        return cls.CONFIG_PATH.exists()
+
+    @classmethod
     def load(cls) -> "LaskConfig":
         """
         Load configuration from ~/.lask-config if it exists.
@@ -90,6 +95,10 @@ class LaskConfig:
                                     setattr(provider_config, key, float(value))
                                 elif key == "max_tokens" and value:
                                     setattr(provider_config, key, int(value))
+                                elif key == "streaming" and value:
+                                    setattr(
+                                        provider_config, key, value.lower() == "true"
+                                    )
                                 elif key == "system_prompt" and value:
                                     setattr(provider_config, key, value)
                                 else:
@@ -104,6 +113,9 @@ class LaskConfig:
                 print(
                     f"Warning: Error reading {cls.CONFIG_PATH}: {e}. Using default configuration."
                 )
+        else:
+            # Config file doesn't exist - make sure default provider exists
+            config.providers["openai"] = ProviderConfig(model="gpt-4o", temperature=0.7)
 
         return config
 
