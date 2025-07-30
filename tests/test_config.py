@@ -53,7 +53,10 @@ def test_default_config_values():
         # Check default values
         assert config.provider == "openai"
         assert isinstance(config.providers, dict)
-        assert len(config.providers) == 0
+        assert len(config.providers) == 1
+        assert "openai" in config.providers
+        assert config.providers["openai"].model == "gpt-4o"
+        assert config.providers["openai"].temperature == 0.7
 
 
 def test_config_parsing():

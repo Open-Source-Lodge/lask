@@ -14,6 +14,12 @@ Ensure you have `OPENAI_API_KEY` in your environment variables or configure it i
 lask What movie is this quote from\? \"that still only counts as one\"
 ```
 
+You can also pipe content into lask:
+
+```bash
+echo "What movie is this quote from? \"that still only counts as one\"" | lask
+```
+
 ## Features
 
 - Simple command-line interface to send prompts to multiple LLM providers
@@ -23,6 +29,7 @@ lask What movie is this quote from\? \"that still only counts as one\"
 - Easy installation via pip
 - Direct output to your terminal
 - Streaming responses for real-time output
+- Support for pipe input (e.g., `echo "your prompt" | lask`)
 
 ## Installation
 
