@@ -13,7 +13,7 @@ Create your feature on a new branch. Make a PR from this branch to the main bran
 The maintainer must review the code before we can take it in.
 
 ## When the PR is merged, update version number and tag
-Checkout main branch, push a version update to pyproject.toml, create tag, push tag. Then on Github, make a new release from the https://github.com/Open-Source-Lodge/lask/releases page.
+Checkout main branch, push a version update to pyproject.toml and uv.lock (`$ uv sync`), create tag, push tag. Then on Github, make a new release from the https://github.com/Open-Source-Lodge/lask/releases page.
 
 Ideally, the version number would be auto-generated, and I did some research regarding that with python-semantic-release, but not sure I got that fully working.
 
