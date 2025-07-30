@@ -17,7 +17,10 @@ Features:
 """
 
 import sys
+import os
 from typing import Union, Iterator, List, Dict
+import readline  # For better input handling in REPL mode
+import atexit
 
 import configparser
 from src.config import LaskConfig
@@ -142,6 +145,97 @@ def prompt_for_config_creation() -> None:
         sys.exit(1)
 
 
+def setup_readline():
+    """
+    Configure readline for better line editing in REPL mode.
+    Enables:
+    - Left/right cursor movement
+    - Command history
+    - History persistence between sessions
+    - Editing with arrow keys
+    - Optional Vi editing mode
+    """
+    # Set up history file
+    history_file = os.path.join(os.path.expanduser("~"), ".lask_history")
+
+    # Create history file if it doesn't exist
+    if not os.path.exists(history_file):
+        try:
+            open(history_file, "w").close()
+        except:
+            # If we can't create the history file, just continue without it
+            pass
+
+    # Try to read the history file
+    try:
+        readline.read_history_file(history_file)
+        # Set history length
+        readline.set_history_length(1000)
+    except Exception:
+        # If we can't read the history, just continue without it
+        pass
+
+    # Save history on exit
+    atexit.register(readline.write_history_file, history_file)
+
+    # Configure readline behavior
+    try:
+        # These are common readline settings that improve the editing experience
+
+        # Enable tab completion
+        readline.parse_and_bind("tab: complete")
+
+        # Make arrow keys work on different platforms
+        if sys.platform == "darwin":  # macOS
+            # Bind arrow keys for Mac
+            readline.parse_and_bind('"\\e[A": previous-history')  # Up arrow
+            readline.parse_and_bind('"\\e[B": next-history')  # Down arrow
+            readline.parse_and_bind('"\\e[C": forward-char')  # Right arrow
+            readline.parse_and_bind('"\\e[D": backward-char')  # Left arrow
+        else:
+            # Linux/Windows style bindings
+            readline.parse_and_bind(
+                '"\\e[A": history-search-backward'
+            )  # Up arrow with search
+            readline.parse_and_bind(
+                '"\\e[B": history-search-forward'
+            )  # Down arrow with search
+
+        # Some additional useful bindings
+        readline.parse_and_bind(
+            '"\\C-a": beginning-of-line'
+        )  # Ctrl+A: go to beginning of line
+        readline.parse_and_bind('"\\C-e": end-of-line')  # Ctrl+E: go to end of line
+        readline.parse_and_bind('"\\C-l": clear-screen')  # Ctrl+L: clear screen
+        readline.parse_and_bind('"\\C-k": kill-line')  # Ctrl+K: delete to end of line
+
+        # Check if user has a preference for vi mode in their ~/.inputrc
+        vi_mode = False
+        try:
+            with open(os.path.expanduser("~/.inputrc"), "r") as f:
+                if "set editing-mode vi" in f.read():
+                    vi_mode = True
+        except:
+            pass
+
+        # Set editing mode based on user preference or environment variable
+        if vi_mode or os.environ.get("LASK_VI_MODE", "").lower() in (
+            "1",
+            "true",
+            "yes",
+        ):
+            readline.parse_and_bind("set editing-mode vi")
+            # Add a visual indicator for vi mode
+            os.environ["LASK_EDITING_MODE"] = "vi"
+        else:
+            readline.parse_and_bind("set editing-mode emacs")
+            os.environ["LASK_EDITING_MODE"] = "emacs"
+
+    except Exception:
+        # If any readline configuration fails, just continue with default settings
+        pass
+
+
 def setup_conversation(config: LaskConfig, provider: str) -> List[Dict[str, str]]:
     """
     Set up the initial conversation with system prompt if available.
@@ -199,6 +293,76 @@ def process_response(result: Union[str, Iterator[str]]) -> str:
     return full_response
 
 
+def handle_repl_command(cmd, conversation):
+    """
+    Handle special REPL commands starting with !
+
+    Args:
+        cmd (str): The command without the ! prefix
+        conversation (List): The current conversation history
+
+    Returns:
+        bool: True if the command was handled, False otherwise
+    """
+    if cmd == "help":
+        print("\nREPL Commands:")
+        print("  !help     - Show this help")
+        print("  !clear    - Clear the screen")
+        print("  !history  - Show command history")
+        print("  !vi       - Switch to Vi editing mode")
+        print("  !emacs    - Switch to Emacs editing mode")
+        print("  exit/quit - Exit the REPL")
+        return True
+    elif cmd == "clear":
+        os.system("cls" if os.name == "nt" else "clear")
+        return True
+    elif cmd == "history":
+        # Show command history
+        hist_len = readline.get_current_history_length()
+        for i in range(1, hist_len + 1):
+            item = readline.get_history_item(i)
+            if item and not item.startswith("!"):  # Skip REPL commands
+                print(f"{i}: {item}")
+        return True
+    elif cmd == "vi":
+        readline.parse_and_bind("set editing-mode vi")
+        os.environ["LASK_EDITING_MODE"] = "vi"
+        print("Switched to Vi editing mode")
+        return True
+    elif cmd == "emacs":
+        readline.parse_and_bind("set editing-mode emacs")
+        os.environ["LASK_EDITING_MODE"] = "emacs"
+        print("Switched to Emacs editing mode")
+        return True
+    return False
+
+
+def display_repl_help():
+    """Display help information for REPL mode"""
+    print("\n==== Lask REPL Mode ====")
+
+    # Show editing mode-specific help
+    if os.environ.get("LASK_EDITING_MODE") == "vi":
+        print("Using Vi editing mode:")
+        print("- Press ESC then 'i' to enter insert mode")
+        print("- Use h,j,k,l for movement in command mode")
+        print("- Use standard Vi commands for editing")
+    else:
+        print("Using Emacs editing mode:")
+        print("- Use arrow keys to navigate and edit your input")
+        print(
+            "- Keyboard shortcuts: Ctrl+A (start of line), Ctrl+E (end of line), Ctrl+K (delete to end)"
+        )
+
+    # Show common commands
+    print("\nCommon commands:")
+    print("- Type '!help' for REPL help")
+    print("- Type '!clear' to clear the screen")
+    print("- Type '!history' to show command history")
+    print("- Type 'exit' or 'quit' to end the session")
+    print("- Press Ctrl+C to interrupt a response")
+
+
 def repl_mode(config: LaskConfig) -> None:
     """
     Run lask in REPL (Read-Eval-Print Loop) mode.
@@ -217,21 +381,34 @@ def repl_mode(config: LaskConfig) -> None:
         )
         sys.exit(1)
 
+    # Configure readline for better line editing
+    setup_readline()
+
     # Initialize conversation history
     conversation = setup_conversation(config, provider)
 
     # Display welcome message
     print("\n==== Lask REPL Mode ====")
     print(f"Using provider: {provider}")
-    print("Enter your prompts. Type 'exit' or 'quit' to end the session.")
-    print("Press Ctrl+C to interrupt a response.")
+
+    # Show help information
+    display_repl_help()
 
     # REPL loop
     try:
         while True:
-            # Get user input
+            # Get user input with readline support for cursor movement and history
             try:
-                user_input = input("\n> ")
+                # Use a colored prompt to make it stand out
+                mode_indicator = (
+                    "[vi]" if os.environ.get("LASK_EDITING_MODE") == "vi" else ""
+                )
+                prompt = (
+                    f"\n\033[1;32m{mode_indicator}>\033[0m "
+                    if sys.stdout.isatty()
+                    else f"\n{mode_indicator}> "
+                )
+                user_input = input(prompt)
             except EOFError:  # Handle Ctrl+D
                 print("\nExiting...")
                 break
@@ -240,6 +417,12 @@ def repl_mode(config: LaskConfig) -> None:
             if user_input.lower() in ("exit", "quit"):
                 print("Exiting...")
                 break
+
+            # Check for special REPL commands
+            if user_input.startswith("!"):
+                cmd = user_input[1:].strip().lower()
+                if handle_repl_command(cmd, conversation):
+                    continue
 
             # Skip empty inputs
             if not user_input.strip():
