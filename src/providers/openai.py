@@ -14,7 +14,7 @@ from src.config import LaskConfig
 def call_api(
     config: LaskConfig,
     prompt: str,
-    conversation_history: Optional[List[Dict[str, str]]] = None
+    conversation_history: Optional[List[Dict[str, str]]] = None,
 ) -> Union[str, Iterator[str]]:
     """
     Call the OpenAI API with the given prompt.

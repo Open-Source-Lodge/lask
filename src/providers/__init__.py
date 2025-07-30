@@ -7,7 +7,7 @@ Providers handle communication with various LLM APIs and support both:
 """
 
 from importlib import import_module
-from typing import Union, Iterator, List, Dict, Any, Optional
+from typing import Union, Iterator, List, Dict, Optional
 from types import ModuleType
 
 from src.config import LaskConfig
@@ -38,7 +38,7 @@ def call_provider_api(
     provider_name: str,
     config: LaskConfig,
     prompt: str,
-    conversation_history: Optional[List[Dict[str, str]]] = None
+    conversation_history: Optional[List[Dict[str, str]]] = None,
 ) -> Union[str, Iterator[str]]:
     """
     Call the appropriate provider API based on the provider name.

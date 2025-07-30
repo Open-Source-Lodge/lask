@@ -4,11 +4,7 @@ AWS Bedrock provider module for lask
 
 import sys
 import json
-from typing import Dict, Any, cast, Union, Iterator, List, Optional, TYPE_CHECKING
-
-# Conditionally import boto3 to avoid import errors in static type checking
-if TYPE_CHECKING:
-    import boto3
+from typing import Dict, Any, cast, Union, Iterator, List, Optional
 
 from src.config import LaskConfig
 
@@ -16,7 +12,7 @@ from src.config import LaskConfig
 def call_api(
     config: LaskConfig,
     prompt: str,
-    conversation_history: Optional[List[Dict[str, str]]] = None
+    conversation_history: Optional[List[Dict[str, str]]] = None,
 ) -> Union[str, Iterator[str]]:
     """
     Call the AWS Bedrock API with the given prompt.

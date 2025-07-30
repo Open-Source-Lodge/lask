@@ -18,7 +18,6 @@ Features:
 
 import sys
 from typing import Union, Iterator, List, Dict
-import readline  # For better input handling in REPL mode
 
 import configparser
 from src.config import LaskConfig
