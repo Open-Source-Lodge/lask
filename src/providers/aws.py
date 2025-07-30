@@ -4,18 +4,28 @@ AWS Bedrock provider module for lask
 
 import sys
 import json
-from typing import Dict, Any, cast, Union, Iterator
+from typing import Dict, Any, cast, Union, Iterator, List, Optional, TYPE_CHECKING
+
+# Conditionally import boto3 to avoid import errors in static type checking
+if TYPE_CHECKING:
+    import boto3
 
 from src.config import LaskConfig
 
 
-def call_api(config: LaskConfig, prompt: str) -> Union[str, Iterator[str]]:
+def call_api(
+    config: LaskConfig,
+    prompt: str,
+    conversation_history: Optional[List[Dict[str, str]]] = None
+) -> Union[str, Iterator[str]]:
     """
     Call the AWS Bedrock API with the given prompt.
 
     Args:
         config (LaskConfig): Configuration object
         prompt (str): The user prompt
+        conversation_history (Optional[List[Dict[str, str]]]): List of conversation messages
+                                                             for multi-turn dialogues
 
     Returns:
         Union[str, Iterator[str]]: The response from the AWS Bedrock API,
@@ -27,7 +37,7 @@ def call_api(config: LaskConfig, prompt: str) -> Union[str, Iterator[str]]:
     """
     # We import boto3 only when needed to avoid requiring it for users who don't use AWS
     try:
-        import boto3
+        import boto3  # type: ignore
     except ImportError:
         print("Error: boto3 is required for AWS Bedrock.")
         print("Install it with: pip install boto3")
@@ -55,16 +65,20 @@ def call_api(config: LaskConfig, prompt: str) -> Union[str, Iterator[str]]:
     default_system_prompt = config.system_prompt
 
     if "anthropic" in model_id:
-        messages = []
+        # If conversation history is provided, use that instead of building new messages
+        if conversation_history is not None:
+            messages = conversation_history
+        else:
+            messages = []
 
-        # Add system prompt if available
-        if provider_system_prompt is not None:
-            messages.append({"role": "system", "content": provider_system_prompt})
-        elif default_system_prompt is not None:
-            messages.append({"role": "system", "content": default_system_prompt})
+            # Add system prompt if available
+            if provider_system_prompt is not None:
+                messages.append({"role": "system", "content": provider_system_prompt})
+            elif default_system_prompt is not None:
+                messages.append({"role": "system", "content": default_system_prompt})
 
-        # Add user message
-        messages.append({"role": "user", "content": prompt})
+            # Add user message
+            messages.append({"role": "user", "content": prompt})
 
         body = {
             "anthropic_version": "bedrock-2023-05-31",
@@ -103,7 +117,9 @@ def call_api(config: LaskConfig, prompt: str) -> Union[str, Iterator[str]]:
         if aws_config.temperature is not None:
             body["temperature"] = aws_config.temperature
 
-    print(f"Prompting AWS Bedrock with model {model_id}: {prompt}\n")
+    # Only print the prompt in one-off mode, not in conversation mode to avoid clutter
+    if conversation_history is None:
+        print(f"Prompting AWS Bedrock with model {model_id}: {prompt}\n")
 
     if streaming and "anthropic" in model_id:
         return stream_aws_response(bedrock, model_id, body)

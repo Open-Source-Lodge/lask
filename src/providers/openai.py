@@ -5,19 +5,25 @@ OpenAI provider module for lask
 import os
 import sys
 import json
-from typing import Dict, Any, Optional, Iterator, Union
+from typing import Dict, Any, Optional, Iterator, Union, List
 import requests
 
 from src.config import LaskConfig
 
 
-def call_api(config: LaskConfig, prompt: str) -> Union[str, Iterator[str]]:
+def call_api(
+    config: LaskConfig,
+    prompt: str,
+    conversation_history: Optional[List[Dict[str, str]]] = None
+) -> Union[str, Iterator[str]]:
     """
     Call the OpenAI API with the given prompt.
 
     Args:
         config (LaskConfig): Configuration object
         prompt (str): The user prompt
+        conversation_history (Optional[List[Dict[str, str]]]): List of conversation messages
+                                                             for multi-turn dialogues
 
     Returns:
         Union[str, Iterator[str]]: The response from the OpenAI API,
@@ -45,19 +51,23 @@ def call_api(config: LaskConfig, prompt: str) -> Union[str, Iterator[str]]:
         "Content-Type": "application/json",
     }
 
-    messages = []
+    # If conversation history is provided, use that instead of building new messages
+    if conversation_history is not None:
+        messages = conversation_history
+    else:
+        messages = []
 
-    # Add system prompt if available
-    provider_system_prompt = openai_config.system_prompt
-    default_system_prompt = config.system_prompt
+        # Add system prompt if available
+        provider_system_prompt = openai_config.system_prompt
+        default_system_prompt = config.system_prompt
 
-    if provider_system_prompt is not None:
-        messages.append({"role": "system", "content": provider_system_prompt})
-    elif default_system_prompt is not None:
-        messages.append({"role": "system", "content": default_system_prompt})
+        if provider_system_prompt is not None:
+            messages.append({"role": "system", "content": provider_system_prompt})
+        elif default_system_prompt is not None:
+            messages.append({"role": "system", "content": default_system_prompt})
 
-    # Add user message
-    messages.append({"role": "user", "content": prompt})
+        # Add user message
+        messages.append({"role": "user", "content": prompt})
 
     data: Dict[str, Any] = {
         "model": model,
@@ -71,7 +81,9 @@ def call_api(config: LaskConfig, prompt: str) -> Union[str, Iterator[str]]:
     if openai_config.max_tokens is not None:
         data["max_tokens"] = openai_config.max_tokens
 
-    print(f"Prompting OpenAI API with model {data['model']}: {prompt}\n")
+    # Only print the prompt in one-off mode, not in conversation mode to avoid clutter
+    if conversation_history is None:
+        print(f"Prompting OpenAI API with model {data['model']}: {prompt}\n")
 
     if streaming:
         return stream_openai_response(headers, data)
