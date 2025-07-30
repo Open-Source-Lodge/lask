@@ -1,291 +1,138 @@
-(Still under development)
-
 # lask
 
 Ask LLMs right from the terminal.
 
-Supports multiple providers like OpenAI, Anthropic, AWS Bedrock, and Azure OpenAI
-
-
-## Usage
-Ensure you have `OPENAI_API_KEY` in your environment variables or configure it in `~/.lask-config`, then you can use `lask` to send prompts to the LLM.
-
-```bash
-lask What movie is this quote from\? \"that still only counts as one\"
-```
-
-You can also pipe content into lask:
-
-```bash
-echo "What movie is this quote from? \"that still only counts as one\"" | lask
-```
-
 ## Features
 
-- Simple command-line interface to send prompts to multiple LLM providers
-- Support for OpenAI, Anthropic, AWS Bedrock, and more.
-- Customizable models and parameters for each provider
-- Minimal dependencies (only requires the `requests` library, and `boto3` for AWS)
-- Easy installation via pip
-- Direct output to your terminal
-- Streaming responses for real-time output
-- Support for pipe input (e.g., `echo "your prompt" | lask`)
+- CLI for multiple LLM providers (OpenAI, Anthropic, AWS Bedrock, Azure)
+- Customizable models and parameters
+- Minimal dependencies (`requests`, `boto3` for AWS)
+- Streaming responses
+- Repl mode for interactive use, with temporary chat history
+- Pipe input support
 
 ## Installation
-
-### Using pip (recommended)
 
 ```bash
 pip install lask
 ```
 
-(For dev, do `pip install .`)
-
-For a user-specific installation:
+## Usage
+With `OPENAI_API_KEY` in your environment or in `~/.lask-config`:
 
 ```bash
-pip install --user lask
+lask What movie is this quote from\? \"that still only counts as one\"
 ```
 
-### From source
+Or as a repl:
 
-1. Clone the repository:
-   ```bash
-   git clone https://github.com/Open-Source-Lodge/lask.git
-   ```
+```bash
+lask
 
-2. Navigate to the directory:
-   ```bash
-   cd lask
-   ```
+==== Lask REPL Mode ====
+Using provider: openai
+Enter your prompts. Type 'exit' or 'quit' to end the session.
+Press Ctrl+C to interrupt a response.
 
-3. Install the package:
-   ```bash
-   pip install -e .
-   ```
+> What movie is this quote from? "that still only counts as one"
+LLM response here...
+> When was that movie released?
+```
+
+Or via pipe:
+
+```bash
+echo "What movie is this quote from? \"that still only counts as one\"" | lask
+```
 
 ## Setup
 
-Before using lask, you need to set up API keys for your preferred provider:
-
-1. Get an API key from your chosen provider:
+1. Get API keys from your provider:
    - [OpenAI](https://platform.openai.com/api-keys)
    - [Anthropic](https://console.anthropic.com/)
-   - AWS Bedrock (uses your AWS credentials)
+   - AWS Bedrock (uses AWS credentials)
 
-2. Create a configuration file at `~/.lask-config` in INI format:
+2. Create `~/.lask-config`:
 
    ```ini
    [default]
-   provider = openai  # Options: openai, anthropic, aws, azure
-   system_prompt = Always answer questions concisely.  # Default system prompt for all providers
+   provider = openai  # openai, anthropic, aws, azure
+   system_prompt = Always answer questions concisely.
 
    [openai]
-   # OpenAI-specific settings
    api_key = your-api-key-here
    model = gpt-4.1
-   system_prompt = You are a helpful AI assistant.  # Overrides default system prompt
 
    [anthropic]
-   # Anthropic-specific settings
    api_key = your-api-key-here
    model = claude-3-opus-20240229
-   system_prompt = You are Claude, an AI assistant by Anthropic.
 
    [aws]
-   # AWS Bedrock settings
-   api_key = your-api-key-here
    model_id = anthropic.claude-3-sonnet-20240229-v1:0
    region = us-east-1
-   system_prompt = Respond as a technical consultant.
 
    [azure]
-   # Azure OpenAI settings
    api_key = your-azure-api-key
    resource_name = your-resource-name
    deployment_id = your-deployment-id
-   system_prompt = You are an Azure OpenAI assistant.
    ```
 
-   This INI configuration file allows you to set your preferred provider, API keys, and customize the models and parameters for each provider.
+   See `examples/example.lask-config` for a full example.
 
-   An example configuration file with comments is available in the `examples/example.lask-config` file.
+3. Or use environment variables:
 
-3. Alternatively, set the appropriate environment variable:
-
-   **For OpenAI (default provider):**
    ```bash
    export OPENAI_API_KEY='your-api-key-here'
-   ```
-
-   **For Anthropic:**
-   ```bash
    export ANTHROPIC_API_KEY='your-api-key-here'
-   ```
-
-   **For AWS Bedrock:**
-   Ensure your AWS credentials are properly configured.
-
-   **For Azure OpenAI:**
-   ```bash
+   # AWS uses standard AWS credentials
    export AZURE_OPENAI_API_KEY='your-api-key-here'
    ```
 
-   To make these permanent, add the export line to your `~/.bashrc`, `~/.zshrc`, or equivalent shell configuration file.
+## Configuration Options
 
-   **Windows users** can use `set` (CMD) or `$env:` (PowerShell) instead of `export`.
-
-
-## API Key Issues
-
-If you see an error about the API key:
-
-1. Ensure you've configured the API key in the `~/.lask-config` file
-2. Alternatively, double-check that you've correctly set the appropriate environment variable for your chosen provider:
-   - OpenAI: `OPENAI_API_KEY`
-   - Anthropic: `ANTHROPIC_API_KEY`
-   - AWS: Check your AWS credentials configuration
-3. Verify your API key is valid and has enough credits
-
-
-## Configuration
-
-You can find a fully commented example configuration file in the `examples/example.lask-config` directory of this repository. Copy it to your home directory as `~/.lask-config` and customize it to your needs.
-
-### Selecting a Provider
-
-Set your preferred provider in the `[default]` section:
-
+### Provider Selection
 ```ini
 [default]
-provider = openai  # Options: openai, anthropic, aws
+provider = openai  # openai, anthropic, aws, azure
 ```
 
-### Streaming Configuration
-
-By default, responses are streamed in real-time to your terminal. You can disable streaming in your configuration file:
-
+### Streaming
 ```ini
 [openai]
-streaming = false  # Disable streaming for OpenAI
-
-[anthropic]
-streaming = false  # Disable streaming for Anthropic
+streaming = false  # Disable streaming (true by default)
 ```
-
-When streaming is enabled, you'll see the response appearing in real-time as it's generated. When disabled, you'll get the complete response only after it's fully generated.
 
 ### System Prompts
-
-You can set system prompts at two levels:
-
-1. Default system prompt for all providers:
-   ```ini
-   [default]
-   system_prompt = Always answer questions concisely.
-   ```
-
-2. Provider-specific system prompts that override the default:
-   ```ini
-   [openai]
-   system_prompt = You are a helpful AI assistant.
-   ```
-
-System prompts allow you to set consistent behavior across all your interactions with the LLM. For example, you can use them to:
-- Specify a response style: "Always answer as short and concise as possible"
-- Set a persona: "You are a helpful assistant specialized in Python programming"
-- Request responses in a specific language: "Always respond in Spanish"
-
-### Provider-specific Configuration
-
-Each provider has its own section where you can set provider-specific options:
-
-#### OpenAI
-
 ```ini
+[default]
+system_prompt = Always answer questions concisely.
+
 [openai]
-api_key = your-openai-api-key
-model = gpt-4.1
-temperature = 0.7
-max_tokens = 2000
-streaming = true  # Enable streaming (this is the default)
-system_prompt = You are a helpful AI assistant.  # Provider-specific system prompt
+system_prompt = You are a helpful AI assistant.  # Provider-specific
 ```
 
-#### Anthropic
+### Provider-Specific Settings
+Each provider supports model, temperature, max_tokens, and other parameters.
 
-```ini
-[anthropic]
-api_key = your-anthropic-api-key
-model = claude-3-opus-20240229
-temperature = 0.7
-max_tokens = 4096
-streaming = true  # Enable streaming (this is the default)
-system_prompt = You are Claude, an AI assistant by Anthropic.  # Provider-specific system prompt
-```
+See `examples/example.lask-config` for all options.
 
-#### AWS Bedrock
+## Development
 
-```ini
-[aws]
-model_id = anthropic.claude-3-sonnet-20240229-v1:0
-region = us-east-1
-temperature = 0.7
-max_tokens = 4096
-system_prompt = Respond as a technical consultant.  # Provider-specific system prompt
-```
+This repo uses `uv`:
 
-#### Azure OpenAI
-
-```ini
-[azure]
-api_key = your-azure-api-key
-resource_name = your-resource-name
-deployment_id = your-deployment-id
-api_version = 2023-05-15
-temperature = 0.7
-max_tokens = 2000
-system_prompt = You are an Azure OpenAI assistant.  # Provider-specific system prompt
-```
-
-## Developing
-
-### Dependencies
-This repo uses `uv` for running scripts and building the package. [uv install instruction](https://docs.astral.sh/uv/getting-started/installation/)
-
-To install the development dependencies, run:
 ```bash
+# Install dependencies
 uv sync
-```
 
-### Build
-To build the package, run:
-
-```bash
+# Build
 uv build
-```
 
-### Install for development
-To install the package in development mode, run:
-
-```bash
-pip install dist/lask-0.1.0-py3-none-any.whl
-```
-
-or
-
-```bash
+# Install for development
 pip install -e .
-```
-With the `-e` flag, you can edit the source code and see changes immediately without reinstalling.
 
-
-If you want to use AWS Bedrock, also install boto3:
-
-```bash
+# For AWS Bedrock
 pip install boto3
 ```
-(I have not tested aws yet, so please report any issues you find)
 
 ## License
 
