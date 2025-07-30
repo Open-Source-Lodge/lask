@@ -1,4 +1,4 @@
-# lask
+# [lask](https://pypi.org/project/lask/)
 
 Ask LLMs right from the terminal.
 
