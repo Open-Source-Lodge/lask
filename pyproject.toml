@@ -3,7 +3,7 @@ name = "lask"
 version = "0.2.1"
 description = "Ask your llm from the command line"
 readme = "README.md"
-requires-python = ">=3.9"
+requires-python = ">=3.7"
 authors = [{ name = "Open Source Lodge" }]
 dependencies = ["requests>=2.32.3", "setuptools>=80.8.0"]
 classifiers = [
