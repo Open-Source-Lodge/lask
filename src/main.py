@@ -162,7 +162,7 @@ def setup_readline():
     if not os.path.exists(history_file):
         try:
             open(history_file, "w").close()
-        except:
+        except FileNotFoundError:
             # If we can't create the history file, just continue without it
             pass
 
@@ -215,7 +215,7 @@ def setup_readline():
             with open(os.path.expanduser("~/.inputrc"), "r") as f:
                 if "set editing-mode vi" in f.read():
                     vi_mode = True
-        except:
+        except FileNotFoundError:
             pass
 
         # Set editing mode based on user preference or environment variable
