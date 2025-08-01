@@ -64,7 +64,7 @@ def prompt_for_config_creation() -> None:
     # Add other providers as commented examples
     config["anthropic"] = {
         "api_key": "YOUR_ANTHROPIC_API_KEY",
-        "model": "claude-3-opus-20240229",
+        "model": "claude-sonnet-4-20250514",
         "temperature": "0.7",
         "streaming": "true",
     }
