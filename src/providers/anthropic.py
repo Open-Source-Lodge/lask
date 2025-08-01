@@ -55,14 +55,14 @@ def call_api(
         "Content-Type": "application/json",
     }
 
-    # If conversation history is provided, use that instead of building new messages
+    # If conversation history is provided, use that instead of building new messages. It will include
+    # the new prompt from the user, as well as any previous messages from the user and assistant.
     if conversation_history is not None:
         messages = conversation_history
     else:
-        messages = []
-
-        # Add user message
-        messages.append({"role": "user", "content": prompt})
+        messages = [
+            {"role": "user", "content": prompt}
+        ]
 
     data: Dict[str, Any] = {
         "model": model,
