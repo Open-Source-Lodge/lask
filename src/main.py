@@ -236,32 +236,6 @@ def setup_readline():
         pass
 
 
-def setup_conversation(config: LaskConfig, provider: str) -> List[Dict[str, str]]:
-    """
-    Set up the initial conversation with system prompt if available.
-
-    Args:
-        config (LaskConfig): Configuration object
-        provider (str): The provider name
-
-    Returns:
-        List[Dict[str, str]]: Initial conversation history
-    """
-    conversation: List[Dict[str, str]] = []
-
-    # Add system message if specified in config
-    provider_config = config.get_provider_config(provider)
-    provider_system_prompt = provider_config.system_prompt
-    default_system_prompt = config.system_prompt
-
-    if provider_system_prompt is not None:
-        conversation.append({"role": "system", "content": provider_system_prompt})
-    elif default_system_prompt is not None:
-        conversation.append({"role": "system", "content": default_system_prompt})
-
-    return conversation
-
-
 def process_response(result: Union[str, Iterator[str]]) -> str:
     """
     Process the response from the provider.
@@ -293,7 +267,7 @@ def process_response(result: Union[str, Iterator[str]]) -> str:
     return full_response
 
 
-def handle_repl_command(cmd, conversation):
+def handle_repl_command(cmd):
     """
     Handle special REPL commands starting with !
 
@@ -385,8 +359,7 @@ def repl_mode(config: LaskConfig) -> None:
     setup_readline()
 
     # Initialize conversation history
-    conversation = setup_conversation(config, provider)
-
+    conversation: List[Dict[str, str]] = []
     # Display welcome message
     print("\n==== Lask REPL Mode ====")
     print(f"Using provider: {provider}")
@@ -421,7 +394,7 @@ def repl_mode(config: LaskConfig) -> None:
             # Check for special REPL commands
             if user_input.startswith("!"):
                 cmd = user_input[1:].strip().lower()
-                if handle_repl_command(cmd, conversation):
+                if handle_repl_command(cmd):
                     continue
 
             # Skip empty inputs

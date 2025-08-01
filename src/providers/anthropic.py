@@ -60,9 +60,7 @@ def call_api(
     if conversation_history is not None:
         messages = conversation_history
     else:
-        messages = [
-            {"role": "user", "content": prompt}
-        ]
+        messages = [{"role": "user", "content": prompt}]
 
     data: Dict[str, Any] = {
         "model": model,

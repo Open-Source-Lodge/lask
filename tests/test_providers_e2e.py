@@ -10,7 +10,6 @@ Tests are skipped if the required environment variables are not set.
 import os
 import sys
 import pytest
-from typing import Optional
 from pathlib import Path
 
 # Add the project root to path for imports
