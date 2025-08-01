@@ -44,7 +44,7 @@ def call_api(
         sys.exit(1)
 
     # Get model (Claude by default)
-    model: str = anthropic_config.model or "claude-3-opus-20240229"
+    model: str = anthropic_config.model or "claude-sonnet-4-20250514"
 
     # Check if streaming is enabled (default to True)
     streaming: bool = anthropic_config.get("streaming", True)
@@ -55,25 +55,14 @@ def call_api(
         "Content-Type": "application/json",
     }
 
-    # If conversation history is provided, use that instead of building new messages
+    # If conversation history is provided, use that instead of building new messages. It will include
+    # the new prompt from the user, as well as any previous messages from the user and assistant.
     if conversation_history is not None:
         messages = conversation_history
     else:
-        messages = []
-
-        # Add system prompt if available
-        provider_system_prompt = anthropic_config.system_prompt
-        default_system_prompt = config.system_prompt
-
-        # For Anthropic, system prompts are handled differently
-        # Claude uses a "system" role message at the start of the conversation
-        if provider_system_prompt is not None:
-            messages.append({"role": "system", "content": provider_system_prompt})
-        elif default_system_prompt is not None:
-            messages.append({"role": "system", "content": default_system_prompt})
-
-        # Add user message
-        messages.append({"role": "user", "content": prompt})
+        messages = [
+            {"role": "user", "content": prompt}
+        ]
 
     data: Dict[str, Any] = {
         "model": model,
@@ -81,6 +70,19 @@ def call_api(
         "max_tokens": anthropic_config.max_tokens or 4096,
         "stream": streaming,
     }
+    # Add system prompt if available
+    provider_system_prompt = anthropic_config.system_prompt
+    default_system_prompt = config.system_prompt
+
+    # For Anthropic, system prompts are handled differently
+    # Claude uses a "system" role message at the start of the conversation
+    # For Anthropic, system prompts are handled differently
+    # Claude uses a top-level "system" parameter, not a "system" role message
+
+    if provider_system_prompt is not None:
+        data["system"] = provider_system_prompt
+    elif default_system_prompt is not None:
+        data["system"] = default_system_prompt
 
     if anthropic_config.temperature is not None:
         data["temperature"] = anthropic_config.temperature
