@@ -431,7 +431,6 @@ def repl_mode(config: LaskConfig) -> None:
             """Process the source entered by the user"""
             # Check for exit command
             if source.strip().lower() in ("exit", "quit"):
-                print("Exiting...")
                 raise SystemExit
 
             # Check for special REPL commands
