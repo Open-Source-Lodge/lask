@@ -57,14 +57,12 @@ def call_api(
 
     # If conversation history is provided, use that instead of building new messages. It will include
     # the new prompt from the user, as well as any previous messages from the user and assistant.
-    if conversation_history is not None:
-        messages = conversation_history
-    else:
-        messages = [{"role": "user", "content": prompt}]
+    if conversation_history is None:
+        conversation_history = [{"role": "user", "content": prompt}]
 
     data: Dict[str, Any] = {
         "model": model,
-        "messages": messages,
+        "messages": conversation_history,
         "max_tokens": anthropic_config.max_tokens or 4096,
         "stream": streaming,
     }

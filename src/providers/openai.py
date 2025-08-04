@@ -52,26 +52,26 @@ def call_api(
     }
 
     # If conversation history is provided, use that instead of building new messages
-    if conversation_history is not None:
-        messages = conversation_history
-    else:
-        messages = []
+    if conversation_history is None:
+        conversation_history = []
 
+    if len(conversation_history) <= 0:
+        # If conversation history is empty, we need to add the system prompt
         # Add system prompt if available
         provider_system_prompt = openai_config.system_prompt
         default_system_prompt = config.system_prompt
 
         if provider_system_prompt is not None:
-            messages.append({"role": "system", "content": provider_system_prompt})
+            conversation_history.append({"role": "system", "content": provider_system_prompt})
         elif default_system_prompt is not None:
-            messages.append({"role": "system", "content": default_system_prompt})
+            conversation_history.append({"role": "system", "content": default_system_prompt})
 
         # Add user message
-        messages.append({"role": "user", "content": prompt})
+        conversation_history.append({"role": "user", "content": prompt})
 
     data: Dict[str, Any] = {
         "model": model,
-        "messages": messages,
+        "messages": conversation_history,
         "stream": streaming,
     }
 
