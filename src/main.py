@@ -18,6 +18,7 @@ Features:
 
 import sys
 import os
+import signal
 from typing import Union, Iterator, List, Dict
 import readline  # For better input handling in REPL mode
 import atexit
@@ -387,6 +388,13 @@ def repl_mode(config: LaskConfig) -> None:
     term_width = get_terminal_width()
     os.environ["COLUMNS"] = str(term_width)
 
+    # Setup signal handler for clean exit on Ctrl+C
+    def signal_handler(sig, frame):
+        sys.exit(0)
+
+    # Register the signal handler for SIGINT (Ctrl+C)
+    signal.signal(signal.SIGINT, signal_handler)
+
     # Initialize conversation history
     conversation: List[Dict[str, str]] = []
 
@@ -408,6 +416,21 @@ def repl_mode(config: LaskConfig) -> None:
             mode_indicator = "[vi]" if os.environ.get("LASK_EDITING_MODE") == "vi" else ""
             self.ps1 = f"\033[1;32m{mode_indicator}>\033[0m " if sys.stdout.isatty() else f"{mode_indicator}> "
             self.ps2 = "... "  # Continuation prompt
+
+        def showtraceback(self):
+            """Override to exit on KeyboardInterrupt instead of showing traceback"""
+            exc_type, exc_value, exc_tb = sys.exc_info()
+            if issubclass(exc_type, KeyboardInterrupt):
+                raise SystemExit
+            super().showtraceback()
+
+        def interact(self, banner=None, exitmsg=None):
+            """Override interact to properly handle KeyboardInterrupt"""
+            try:
+                super().interact(banner, exitmsg)
+            except KeyboardInterrupt:
+                # Exit immediately without printing KeyboardInterrupt
+                raise SystemExit
 
         def raw_input(self, prompt=""):
             """Override to ensure we have proper line wrapping for input"""
@@ -477,6 +500,7 @@ def repl_mode(config: LaskConfig) -> None:
     # display_repl_help()
 
     # Create and run the console
+    # Note: Using signal.signal to handle Ctrl+C directly
     console = LaskConsole(config, conversation, provider)
 
     # Make sure the terminal knows its width for proper wrapping
@@ -490,7 +514,7 @@ def repl_mode(config: LaskConfig) -> None:
     try:
         # Start the interactive loop with proper line wrapping
         console.interact(banner="", exitmsg="")
-    except (KeyboardInterrupt, SystemExit):
+    except (SystemExit, KeyboardInterrupt):
         print("\nExiting...")
 
 
