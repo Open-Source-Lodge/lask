@@ -1,0 +1,25 @@
+name: "End-to-end test"
+
+on:
+  pull_request:
+
+jobs:
+  build:
+    name: End to end test 🧪
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Install uv
+        uses: astral-sh/setup-uv@v3
+        with:
+          enable-cache: true
+          cache-dependency-glob: uv.lock
+
+      - name: Set up Python
+        run: uv python install 3.13 # Or whatever version I want to use.
+
+      - name: Run pytest
+        run: uv run pytest tests/test_providers_e2e.py

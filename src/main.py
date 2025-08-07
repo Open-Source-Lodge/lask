@@ -18,6 +18,7 @@ Features:
 
 import sys
 import os
+import signal
 from typing import Union, Iterator, List, Dict
 import readline  # For better input handling in REPL mode
 import atexit
@@ -64,7 +65,7 @@ def prompt_for_config_creation() -> None:
     # Add other providers as commented examples
     config["anthropic"] = {
         "api_key": "YOUR_ANTHROPIC_API_KEY",
-        "model": "claude-3-opus-20240229",
+        "model": "claude-sonnet-4-20250514",
         "temperature": "0.7",
         "streaming": "true",
     }
@@ -145,6 +146,15 @@ def prompt_for_config_creation() -> None:
         sys.exit(1)
 
 
+def get_terminal_width():
+    import shutil
+    """Get the current terminal width"""
+    try:
+        return shutil.get_terminal_size().columns
+    except (AttributeError, ValueError, OSError):
+        return 80  # Default fallback value
+
+
 def setup_readline():
     """
     Configure readline for better line editing in REPL mode.
@@ -154,6 +164,7 @@ def setup_readline():
     - History persistence between sessions
     - Editing with arrow keys
     - Optional Vi editing mode
+    - Multi-line support for long inputs
     """
     # Set up history file
     history_file = os.path.join(os.path.expanduser("~"), ".lask_history")
@@ -184,6 +195,15 @@ def setup_readline():
 
         # Enable tab completion
         readline.parse_and_bind("tab: complete")
+
+        # Configure readline for better line editing and wrapping
+        readline.parse_and_bind('set horizontal-scroll-mode off')
+        readline.parse_and_bind('set mark-modified-lines on')
+        readline.parse_and_bind('set bell-style none')
+
+        # Set the terminal width for proper line wrapping
+        # This is crucial for handling long input lines correctly
+        os.environ["COLUMNS"] = str(get_terminal_width())
 
         # Make arrow keys work on different platforms
         if sys.platform == "darwin":  # macOS
@@ -236,32 +256,6 @@ def setup_readline():
         pass
 
 
-def setup_conversation(config: LaskConfig, provider: str) -> List[Dict[str, str]]:
-    """
-    Set up the initial conversation with system prompt if available.
-
-    Args:
-        config (LaskConfig): Configuration object
-        provider (str): The provider name
-
-    Returns:
-        List[Dict[str, str]]: Initial conversation history
-    """
-    conversation: List[Dict[str, str]] = []
-
-    # Add system message if specified in config
-    provider_config = config.get_provider_config(provider)
-    provider_system_prompt = provider_config.system_prompt
-    default_system_prompt = config.system_prompt
-
-    if provider_system_prompt is not None:
-        conversation.append({"role": "system", "content": provider_system_prompt})
-    elif default_system_prompt is not None:
-        conversation.append({"role": "system", "content": default_system_prompt})
-
-    return conversation
-
-
 def process_response(result: Union[str, Iterator[str]]) -> str:
     """
     Process the response from the provider.
@@ -293,7 +287,7 @@ def process_response(result: Union[str, Iterator[str]]) -> str:
     return full_response
 
 
-def handle_repl_command(cmd, conversation):
+def handle_repl_command(cmd):
     """
     Handle special REPL commands starting with !
 
@@ -332,6 +326,7 @@ def handle_repl_command(cmd, conversation):
     elif cmd == "emacs":
         readline.parse_and_bind("set editing-mode emacs")
         os.environ["LASK_EDITING_MODE"] = "emacs"
+
         print("Switched to Emacs editing mode")
         return True
     return False
@@ -368,9 +363,14 @@ def repl_mode(config: LaskConfig) -> None:
     Run lask in REPL (Read-Eval-Print Loop) mode.
     This mode maintains conversation context between prompts.
 
+    Uses Python's code.InteractiveConsole for proper line wrapping
+    and multi-line input handling.
+
     Args:
         config (LaskConfig): Configuration object
     """
+    import code
+
     # Determine which provider to use
     provider: str = config.get("provider", "openai").lower()
 
@@ -384,68 +384,137 @@ def repl_mode(config: LaskConfig) -> None:
     # Configure readline for better line editing
     setup_readline()
 
+    # Set terminal width for proper line wrapping
+    term_width = get_terminal_width()
+    os.environ["COLUMNS"] = str(term_width)
+
+    # Setup signal handler for clean exit on Ctrl+C
+    def signal_handler(sig, frame):
+        sys.exit(0)
+
+    # Register the signal handler for SIGINT (Ctrl+C)
+    signal.signal(signal.SIGINT, signal_handler)
+
     # Initialize conversation history
-    conversation = setup_conversation(config, provider)
+    conversation: List[Dict[str, str]] = []
 
-    # Display welcome message
-    print("\n==== Lask REPL Mode ====")
-    print(f"Using provider: {provider}")
+    # Create a custom console class that inherits from InteractiveConsole
+    class LaskConsole(code.InteractiveConsole):
+        def __init__(self, config, conversation, provider):
+            # Initialize with locals dictionary that includes our variables
+            locals_dict = {
+                "config": config,
+                "conversation": conversation,
+                "provider": provider,
+            }
+            super().__init__(locals=locals_dict)
+            self.config = config
+            self.conversation = conversation
+            self.provider = provider
 
-    # Show help information
-    display_repl_help()
+            # Set custom prompt
+            mode_indicator = "[vi]" if os.environ.get("LASK_EDITING_MODE") == "vi" else ""
+            self.ps1 = f"\033[1;32m{mode_indicator}>\033[0m " if sys.stdout.isatty() else f"{mode_indicator}> "
+            self.ps2 = "... "  # Continuation prompt
 
-    # REPL loop
-    try:
-        while True:
-            # Get user input with readline support for cursor movement and history
+        def showtraceback(self):
+            """Override to exit on KeyboardInterrupt instead of showing traceback"""
+            exc_type, exc_value, exc_tb = sys.exc_info()
+            if issubclass(exc_type, KeyboardInterrupt):
+                raise SystemExit
+            super().showtraceback()
+
+        def interact(self, banner=None, exitmsg=None):
+            """Override interact to properly handle KeyboardInterrupt"""
             try:
-                # Use a colored prompt to make it stand out
-                mode_indicator = (
-                    "[vi]" if os.environ.get("LASK_EDITING_MODE") == "vi" else ""
-                )
-                prompt = (
-                    f"\n\033[1;32m{mode_indicator}>\033[0m "
-                    if sys.stdout.isatty()
-                    else f"\n{mode_indicator}> "
-                )
-                user_input = input(prompt)
-            except EOFError:  # Handle Ctrl+D
-                print("\nExiting...")
-                break
+                super().interact(banner, exitmsg)
+            except KeyboardInterrupt:
+                # Exit immediately without printing KeyboardInterrupt
+                raise SystemExit
 
-            # Check for exit commands
-            if user_input.lower() in ("exit", "quit"):
-                print("Exiting...")
-                break
+        def raw_input(self, prompt=""):
+            """Override to ensure we have proper line wrapping for input"""
+            # Update terminal width before each input
+            term_width = get_terminal_width()
+            os.environ["COLUMNS"] = str(term_width)
+
+            # Configure readline for proper line wrapping
+            readline.parse_and_bind('set horizontal-scroll-mode off')
+
+            # Get input from the parent class
+            result = super().raw_input(prompt)
+
+            # Add a newline after long inputs for better readability
+            if len(result) > term_width // 3:
+                print()
+
+            return result
+
+        def runsource(self, source, filename="<input>", symbol="single"):
+            """Process the source entered by the user"""
+            # Check for exit command
+            if source.strip().lower() in ("exit", "quit"):
+                raise SystemExit
 
             # Check for special REPL commands
-            if user_input.startswith("!"):
-                cmd = user_input[1:].strip().lower()
-                if handle_repl_command(cmd, conversation):
-                    continue
+            if source.startswith("!"):
+                cmd = source[1:].strip().lower()
+                if handle_repl_command(cmd):
+                    return False  # Input was handled
 
             # Skip empty inputs
-            if not user_input.strip():
-                continue
+            if not source.strip():
+                return False
 
-            # Add user message to conversation
-            conversation.append({"role": "user", "content": user_input})
-
+            # Process the input as a prompt to the LLM
             try:
+                # Add user message to conversation
+                self.conversation.append({"role": "user", "content": source})
+
                 # Call the provider API with the full conversation history
-                result = call_provider_api(provider, config, user_input, conversation)
+                result = call_provider_api(self.provider, self.config, source, self.conversation)
 
                 # Process the response and get the full text
                 full_response = process_response(result)
 
                 # Add assistant's response to conversation history
-                conversation.append({"role": "assistant", "content": full_response})
+                self.conversation.append({"role": "assistant", "content": full_response})
 
+                # Add the input to readline history for up/down arrow access
+                try:
+                    readline.add_history(source)
+                except:
+                    pass  # Ignore history errors
+
+                return False  # Input was fully processed
             except Exception as e:
                 print(f"\nError: {str(e)}")
+                return False
 
-    except KeyboardInterrupt:
-        # Handle Ctrl+C at input prompt
+    # Display welcome message
+    print("==== Lask REPL Mode ====")
+    print("Type \"exit\" to quit, and \"!help\" for available commands.")
+    print(f"Using provider: {provider} with model {config.get_provider_config(provider).model}")
+
+    # Show help information
+    # display_repl_help()
+
+    # Create and run the console
+    # Note: Using signal.signal to handle Ctrl+C directly
+    console = LaskConsole(config, conversation, provider)
+
+    # Make sure the terminal knows its width for proper wrapping
+    term_width = get_terminal_width()
+    os.environ["COLUMNS"] = str(term_width)
+
+    # Set up some additional readline configurations specific to our REPL
+    readline.parse_and_bind('set enable-bracketed-paste on')  # Better paste handling
+    readline.parse_and_bind('set horizontal-scroll-mode off')  # Force line wrapping
+
+    try:
+        # Start the interactive loop with proper line wrapping
+        console.interact(banner="", exitmsg="")
+    except (SystemExit, KeyboardInterrupt):
         print("\nExiting...")
 
 

@@ -25,7 +25,7 @@ temperature = 0.7
 max_tokens = 2000
 
 [anthropic]
-model = claude-3-opus-20240229
+model = claude-sonnet-4-20250514
 api_key = anthropic-api-key
 temperature = 0.5
 max_tokens = 4096
@@ -91,7 +91,7 @@ def test_config_parsing():
 
             # Check Anthropic config
             anthropic_config = config.get_provider_config("anthropic")
-            assert anthropic_config.model == "claude-3-opus-20240229"
+            assert anthropic_config.model == "claude-sonnet-4-20250514"
             assert anthropic_config.api_key == "anthropic-api-key"
             assert anthropic_config.temperature == 0.5
             assert anthropic_config.max_tokens == 4096

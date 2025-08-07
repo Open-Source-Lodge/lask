@@ -49,7 +49,9 @@ def call_provider_api(
         prompt (str): The user prompt
         conversation_history (Optional[List[Dict[str, str]]]): List of conversation messages
                                                              in the format {"role": "...", "content": "..."}
-                                                             If provided, uses this for context.
+                                                             If provided, uses this for context. It will include
+                                                             both user and assistant messages, and the new prompt
+                                                             from the user.
 
     Returns:
         Union[str, Iterator[str]]: The response from the provider, either as a full string

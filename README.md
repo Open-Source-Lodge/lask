@@ -65,7 +65,7 @@ echo "What movie is this quote from? \"that still only counts as one\"" | lask
 
    [anthropic]
    api_key = your-api-key-here
-   model = claude-3-opus-20240229
+   model = claude-sonnet-4-20250514
 
    [aws]
    model_id = anthropic.claude-3-sonnet-20240229-v1:0

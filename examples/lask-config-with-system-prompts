@@ -13,7 +13,7 @@ max_tokens = 2000
 system_prompt = You are a helpful AI assistant. Always provide clear, accurate, and concise information.
 
 [anthropic]
-model = claude-3-opus-20240229
+model = claude-sonnet-4-20250514
 temperature = 0.5
 max_tokens = 4000
 system_prompt = You are Claude, an AI assistant by Anthropic. Always provide information that is helpful, harmless, and honest.
