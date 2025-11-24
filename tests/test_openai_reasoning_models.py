@@ -53,6 +53,11 @@ def test_is_reasoning_model_edge_cases():
     
     # Empty string
     assert is_reasoning_model("") is False
+    
+    # Models with similar but different numbering
+    assert is_reasoning_model("o2-model") is False
+    assert is_reasoning_model("o5-model") is False
+    assert is_reasoning_model("o") is False
 
 
 def test_reasoning_model_no_system_message():
