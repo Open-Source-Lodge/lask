@@ -96,6 +96,23 @@ echo "What movie is this quote from? \"that still only counts as one\"" | lask
 provider = openai  # openai, anthropic, aws, azure
 ```
 
+### Model Selection
+
+#### OpenAI Models
+lask supports all OpenAI models, including:
+- **Chat models**: `gpt-4o`, `gpt-4o-mini`, `gpt-4`, `gpt-4.1`, `gpt-3.5-turbo`
+- **Reasoning models**: `o1-preview`, `o1-mini`, `o3-mini`, `o4-mini`
+
+**Note**: Reasoning models (o1*, o3*, o4*) have special requirements:
+- System messages are not supported
+- Temperature parameter is not supported
+- Streaming is supported
+
+```ini
+[openai]
+model = gpt-4o  # or o1-preview for reasoning tasks
+```
+
 ### Streaming
 ```ini
 [openai]
@@ -110,6 +127,8 @@ system_prompt = Always answer questions concisely.
 [openai]
 system_prompt = You are a helpful AI assistant.  # Provider-specific
 ```
+
+**Note**: System prompts are automatically disabled for reasoning models (o1*, o3*, o4*).
 
 ### Provider-Specific Settings
 Each provider supports model, temperature, max_tokens, and other parameters.
