@@ -11,6 +11,26 @@ import requests
 from src.config import LaskConfig
 
 
+def is_reasoning_model(model: str) -> bool:
+    """
+    Check if the model is a reasoning model (o1, o3, o4 series).
+    
+    Reasoning models have special requirements:
+    - No system messages (system role not supported)
+    - No temperature parameter
+    - Streaming is supported
+    
+    Args:
+        model (str): The model identifier
+        
+    Returns:
+        bool: True if the model is a reasoning model
+    """
+    model_lower = model.lower()
+    # Check for o1, o3, o4 series models (o1-preview, o1-mini, o3-mini, o4-mini, etc.)
+    return any(model_lower.startswith(prefix) for prefix in ['o1', 'o3', 'o4'])
+
+
 def call_api(
     config: LaskConfig,
     prompt: str,
@@ -43,6 +63,9 @@ def call_api(
     # Get model from config or use default
     model: str = openai_config.model or "gpt-4.1"
 
+    # Check if this is a reasoning model
+    is_reasoning = is_reasoning_model(model)
+
     # Check if streaming is enabled (default to True)
     streaming: bool = openai_config.get("streaming", True)
 
@@ -57,17 +80,23 @@ def call_api(
     else:
         messages = []
 
-        # Add system prompt if available
+        # Add system prompt if available (but not for reasoning models)
         provider_system_prompt = openai_config.system_prompt
         default_system_prompt = config.system_prompt
 
-        if provider_system_prompt is not None:
-            messages.append({"role": "system", "content": provider_system_prompt})
-        elif default_system_prompt is not None:
-            messages.append({"role": "system", "content": default_system_prompt})
+        if not is_reasoning:
+            # Regular models support system messages
+            if provider_system_prompt is not None:
+                messages.append({"role": "system", "content": provider_system_prompt})
+            elif default_system_prompt is not None:
+                messages.append({"role": "system", "content": default_system_prompt})
 
         # Add user message
         messages.append({"role": "user", "content": prompt})
+
+    # Filter out system messages from conversation history for reasoning models
+    if is_reasoning and conversation_history is not None:
+        messages = [msg for msg in messages if msg.get("role") != "system"]
 
     data: Dict[str, Any] = {
         "model": model,
@@ -76,7 +105,8 @@ def call_api(
     }
 
     # Add optional parameters if specified
-    if openai_config.temperature is not None:
+    # Note: reasoning models (o1/o3/o4) don't support temperature
+    if openai_config.temperature is not None and not is_reasoning:
         data["temperature"] = openai_config.temperature
     if openai_config.max_tokens is not None:
         data["max_tokens"] = openai_config.max_tokens
