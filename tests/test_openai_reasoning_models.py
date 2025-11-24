@@ -12,6 +12,22 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 from src.providers.openai import is_reasoning_model
 
 
+def get_request_data(mock_function):
+    """
+    Helper function to extract request data from a mocked function call.
+    
+    Args:
+        mock_function: The mocked function (e.g., non_streaming_openai_response)
+        
+    Returns:
+        dict: The data dictionary passed to the function
+    """
+    call_args = mock_function.call_args
+    # The second positional argument (index 1) is the data dict containing
+    # model, messages, stream, temperature, and other API parameters
+    return call_args[0][1]
+
+
 def test_is_reasoning_model_o1_series():
     """Test that o1 series models are correctly identified as reasoning models."""
     assert is_reasoning_model("o1-preview") is True
@@ -82,10 +98,9 @@ def test_reasoning_model_no_system_message():
         
         # Check that the function was called
         assert mock_non_streaming.called
-        call_args = mock_non_streaming.call_args
         
-        # Get the data argument
-        data = call_args[0][1]  # Second positional argument
+        # Get the data argument using helper function
+        data = get_request_data(mock_non_streaming)
         messages = data.get('messages', [])
         
         # Verify no system message in messages
@@ -119,10 +134,9 @@ def test_reasoning_model_no_temperature():
         
         # Check that the function was called
         assert mock_non_streaming.called
-        call_args = mock_non_streaming.call_args
         
-        # Get the data argument
-        data = call_args[0][1]  # Second positional argument
+        # Get the data argument using helper function
+        data = get_request_data(mock_non_streaming)
         
         # Verify temperature is not in the request
         assert 'temperature' not in data, "Temperature should not be included for reasoning models"
@@ -150,10 +164,9 @@ def test_regular_model_includes_system_message():
         
         # Check that the function was called
         assert mock_non_streaming.called
-        call_args = mock_non_streaming.call_args
         
-        # Get the data argument
-        data = call_args[0][1]  # Second positional argument
+        # Get the data argument using helper function
+        data = get_request_data(mock_non_streaming)
         messages = data.get('messages', [])
         
         # Verify system message is present
@@ -184,10 +197,9 @@ def test_regular_model_includes_temperature():
         
         # Check that the function was called
         assert mock_non_streaming.called
-        call_args = mock_non_streaming.call_args
         
-        # Get the data argument
-        data = call_args[0][1]  # Second positional argument
+        # Get the data argument using helper function
+        data = get_request_data(mock_non_streaming)
         
         # Verify temperature is in the request
         assert 'temperature' in data, "Temperature should be included for regular models"

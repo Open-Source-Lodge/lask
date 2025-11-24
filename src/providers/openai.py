@@ -10,6 +10,10 @@ import requests
 
 from src.config import LaskConfig
 
+# Reasoning model prefixes - these models have special API requirements
+# (no system messages, no temperature parameter)
+REASONING_MODEL_PREFIXES = ['o1', 'o3', 'o4']
+
 
 def is_reasoning_model(model: str) -> bool:
     """
@@ -28,7 +32,7 @@ def is_reasoning_model(model: str) -> bool:
     """
     model_lower = model.lower()
     # Check for o1, o3, o4 series models (o1-preview, o1-mini, o3-mini, o4-mini, etc.)
-    return any(model_lower.startswith(prefix) for prefix in ['o1', 'o3', 'o4'])
+    return any(model_lower.startswith(prefix) for prefix in REASONING_MODEL_PREFIXES)
 
 
 def call_api(
