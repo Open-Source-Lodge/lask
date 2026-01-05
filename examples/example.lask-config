@@ -17,7 +17,7 @@ provider = openai
 # api_key = your-openai-api-key-here
 
 # The OpenAI model to use for queries
-# Common options: gpt-3.5-turbo, gpt-4, gpt-4.1, gpt-4o
+# Common options: gpt-3.5-turbo, gpt-4, gpt-4.1, gpt-5.2
 model = gpt-4.1
 
 # temperature = 0.7
