@@ -49,6 +49,18 @@ class LaskConfig:
     providers: Dict[str, ProviderConfig] = field(default_factory=dict)
     # Default system prompt
     system_prompt: Optional[str] = None
+    # Smart command mode: true, false, or auto
+    # auto = let the LLM decide if the prompt is a command request
+    smart_command: str = "auto"
+    # Whether to include previous commands in smart command LLM context
+    smart_context_commands: str = "true"
+    # Whether to include command output in smart command LLM context
+    smart_context_output: str = "false"
+    # Whether smart commands from the REPL are added to shell history
+    repl_commands_to_shell_history: str = "false"
+    # Whether the user has accepted/declined the shell hook install
+    # None = not yet asked, "true" = accepted, "false" = declined
+    shell_hook: Optional[str] = None
 
     # Class constants
     CONFIG_PATH: ClassVar[Path] = Path.home() / ".lask-config"
@@ -81,6 +93,16 @@ class LaskConfig:
                             # Handle type conversion for specific fields
                             if key in ["system_prompt"]:
                                 setattr(config, key, value)
+                            elif key == "smart_command":
+                                setattr(config, key, value.lower().strip())
+                            elif key in (
+                                "smart_context_commands",
+                                "smart_context_output",
+                                "repl_commands_to_shell_history",
+                            ):
+                                setattr(config, key, value.lower().strip())
+                            elif key == "shell_hook":
+                                setattr(config, key, value.lower().strip())
                             else:
                                 setattr(config, key, value)
 
@@ -145,6 +167,24 @@ class LaskConfig:
             Any: The configuration value
         """
         return getattr(self, key, default) if hasattr(self, key) else default
+
+    def save_setting(self, section: str, key: str, value: str) -> None:
+        """
+        Save a single setting to the config file, preserving existing content.
+
+        Args:
+            section (str): The config section (e.g. 'default')
+            key (str): The setting key
+            value (str): The setting value
+        """
+        parser = configparser.ConfigParser()
+        if self.CONFIG_PATH.exists():
+            parser.read(self.CONFIG_PATH)
+        if section not in parser:
+            parser[section] = {}
+        parser[section][key] = value
+        with open(self.CONFIG_PATH, "w") as f:
+            parser.write(f)
 
     def __getitem__(self, key: str) -> Any:
         """Allow dictionary-like access to attributes."""

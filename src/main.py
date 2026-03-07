@@ -18,12 +18,15 @@ Features:
 
 import sys
 import os
+import platform
+import subprocess
 from typing import Union, Iterator, List, Dict
 import readline  # For better input handling in REPL mode
 import atexit
 
 import configparser
 from src.config import LaskConfig
+from src.chat_history import ChatHistory
 from src.providers import call_provider_api
 
 
@@ -236,32 +239,6 @@ def setup_readline():
         pass
 
 
-def setup_conversation(config: LaskConfig, provider: str) -> List[Dict[str, str]]:
-    """
-    Set up the initial conversation with system prompt if available.
-
-    Args:
-        config (LaskConfig): Configuration object
-        provider (str): The provider name
-
-    Returns:
-        List[Dict[str, str]]: Initial conversation history
-    """
-    conversation: List[Dict[str, str]] = []
-
-    # Add system message if specified in config
-    provider_config = config.get_provider_config(provider)
-    provider_system_prompt = provider_config.system_prompt
-    default_system_prompt = config.system_prompt
-
-    if provider_system_prompt is not None:
-        conversation.append({"role": "system", "content": provider_system_prompt})
-    elif default_system_prompt is not None:
-        conversation.append({"role": "system", "content": default_system_prompt})
-
-    return conversation
-
-
 def process_response(result: Union[str, Iterator[str]]) -> str:
     """
     Process the response from the provider.
@@ -293,19 +270,20 @@ def process_response(result: Union[str, Iterator[str]]) -> str:
     return full_response
 
 
-def handle_repl_command(cmd, conversation):
+def handle_repl_command(cmd, history):
     """
     Handle special REPL commands starting with !
 
     Args:
         cmd (str): The command without the ! prefix
-        conversation (List): The current conversation history
+        history (ChatHistory): The current chat history
 
     Returns:
         bool: True if the command was handled, False otherwise
     """
     if cmd == "help":
         print("\nREPL Commands:")
+        print("  ! <cmd>   - Run a shell command directly")
         print("  !help     - Show this help")
         print("  !clear    - Clear the screen")
         print("  !history  - Show command history")
@@ -356,6 +334,7 @@ def display_repl_help():
 
     # Show common commands
     print("\nCommon commands:")
+    print("- Type '! <cmd>' to run a shell command directly")
     print("- Type '!help' for REPL help")
     print("- Type '!clear' to clear the screen")
     print("- Type '!history' to show command history")
@@ -384,12 +363,19 @@ def repl_mode(config: LaskConfig) -> None:
     # Configure readline for better line editing
     setup_readline()
 
-    # Initialize conversation history
-    conversation = setup_conversation(config, provider)
+    # Initialize chat history (handles system prompt automatically)
+    history = ChatHistory(config, provider)
+
+    # Check smart command setting for REPL routing
+    smart = config.smart_command
+    if smart in ("true", "auto") and config.repl_commands_to_shell_history == "true":
+        ensure_shell_hook(config)
 
     # Display welcome message
     print("\n==== Lask REPL Mode ====")
     print(f"Using provider: {provider}")
+    if smart in ("true", "auto"):
+        print(f"Smart command: {smart}")
 
     # Show help information
     display_repl_help()
@@ -420,26 +406,84 @@ def repl_mode(config: LaskConfig) -> None:
 
             # Check for special REPL commands
             if user_input.startswith("!"):
-                cmd = user_input[1:].strip().lower()
-                if handle_repl_command(cmd, conversation):
+                rest = user_input[1:]
+                # "! <command>" runs a shell command directly (treated like a smart command)
+                if rest.startswith(" ") and rest.strip():
+                    command = rest.strip()
+                    entry: Dict[str, str] = {"prompt": user_input, "command": command}
+                    capture_output = config.smart_context_output == "true"
+                    chunks: list[str] = []
+                    try:
+                        if capture_output:
+                            proc = subprocess.Popen(
+                                command,
+                                shell=True,
+                                stdout=subprocess.PIPE,
+                                stderr=subprocess.STDOUT,
+                                text=True,
+                            )
+                            for line in proc.stdout:  # type: ignore[union-attr]
+                                print(line, end="", flush=True)
+                                chunks.append(line)
+                            proc.wait()
+                        else:
+                            subprocess.run(command, shell=True)
+                    except KeyboardInterrupt:
+                        print("\n\nCommand interrupted.")
+                    if capture_output and chunks:
+                        entry["output"] = "".join(chunks).strip()
+                    if config.repl_commands_to_shell_history == "true":
+                        write_last_command(command)
+                    history.add_command_entry(entry)
+                    history.add_smart_command_context(entry)
+                    continue
+                cmd = rest.strip().lower()
+                if handle_repl_command(cmd, history):
                     continue
 
             # Skip empty inputs
             if not user_input.strip():
                 continue
 
-            # Add user message to conversation
-            conversation.append({"role": "user", "content": user_input})
+            # Route through smart command if applicable
+            use_smart = False
+            if smart == "true":
+                use_smart = True
+            elif smart == "auto":
+                use_smart = classify_prompt(config, user_input)
+
+            if use_smart:
+                # Smart command: translate to shell command, don't add to conversation
+                try:
+                    cmd_hist = (
+                        history.command_history
+                        if config.smart_context_commands == "true"
+                        else []
+                    )
+                    result = run_smart_command(
+                        config, user_input, is_repl=True, command_history=cmd_hist
+                    )
+                    if result is not None:
+                        history.add_command_entry(result)
+                        history.add_smart_command_context(result)
+                except Exception as e:
+                    print(f"\nError: {str(e)}")
+                continue
+
+            # Regular prompt: add to conversation and get response
+            history.add_user_message(user_input)
 
             try:
                 # Call the provider API with the full conversation history
-                result = call_provider_api(provider, config, user_input, conversation)
+                result = call_provider_api(
+                    provider, config, user_input, history.messages
+                )
 
                 # Process the response and get the full text
                 full_response = process_response(result)
 
                 # Add assistant's response to conversation history
-                conversation.append({"role": "assistant", "content": full_response})
+                history.add_assistant_message(full_response)
 
             except Exception as e:
                 print(f"\nError: {str(e)}")
@@ -447,6 +491,359 @@ def repl_mode(config: LaskConfig) -> None:
     except KeyboardInterrupt:
         # Handle Ctrl+C at input prompt
         print("\nExiting...")
+
+
+def classify_prompt(config: LaskConfig, prompt: str) -> bool:
+    """
+    Ask the LLM whether the user's prompt is a request for a shell command.
+
+    Args:
+        config (LaskConfig): Configuration object
+        prompt (str): The user's prompt
+
+    Returns:
+        bool: True if the prompt looks like a shell command request
+    """
+    provider: str = config.get("provider", "openai").lower()
+
+    classification_system_prompt = (
+        "You are a classifier. The user will give you a prompt. "
+        "Determine if the user is asking for a shell/terminal command to be executed, "
+        "or if they are asking a general knowledge question. "
+        "Respond with ONLY the single word: command or question. "
+        "Nothing else."
+    )
+    conversation: List[Dict[str, str]] = [
+        {"role": "system", "content": classification_system_prompt},
+        {"role": "user", "content": prompt},
+    ]
+
+    try:
+        result = call_provider_api(provider, config, prompt, conversation)
+
+        answer = ""
+        if isinstance(result, str):
+            answer = result.strip().lower()
+        else:
+            for chunk in result:
+                answer += chunk
+            answer = answer.strip().lower()
+
+        return "command" in answer
+    except Exception:
+        # If classification fails, fall back to normal prompt
+        return False
+
+
+def write_last_command(command: str) -> None:
+    """
+    Write the command to ~/.lask_last_command so the shell hook
+    (installed via `lask --shell-init`) can inject it into the
+    live shell history on the next prompt.
+    Newlines are escaped to prevent the shell from splitting the command.
+    """
+    try:
+        last_cmd_path = os.path.expanduser("~/.lask_last_command")
+        # Escape backslashes first, then newlines
+        escaped = command.replace("\\", "\\\\").replace("\n", "\\n")
+        with open(last_cmd_path, "w") as f:
+            f.write(escaped)
+    except Exception:
+        pass
+
+
+def run_smart_command(
+    config: LaskConfig,
+    prompt: str,
+    is_repl: bool = False,
+    command_history: List[Dict[str, str]] | None = None,
+) -> Dict[str, str] | None:
+    """
+    Core smart command logic: send the prompt to the LLM, get back a shell
+    command, display it, and execute after user confirmation.
+
+    This is the reusable core used by both one-off and REPL modes.
+
+    Args:
+        config (LaskConfig): Configuration object
+        prompt (str): The user's natural language description of a command
+        is_repl (bool): Whether running inside the REPL (affects interrupt msg)
+        command_history (list | None): Previous interactions, each entry is
+            {"prompt": "...", "command": "...", "output": "..."}
+
+    Returns:
+        dict | None: {"prompt": ..., "command": ..., "output": ...} for the
+                     executed command, or None on error.
+    """
+    provider: str = config.get("provider", "openai").lower()
+
+    if provider not in LaskConfig.SUPPORTED_PROVIDERS:
+        print(
+            f"Error: Unsupported provider '{provider}'. Supported providers are: {', '.join(LaskConfig.SUPPORTED_PROVIDERS)}"
+        )
+        return None
+
+    # Build a conversation with a system prompt that instructs the LLM
+    # to only return a shell command
+    os_info = platform.system()  # e.g. "Darwin", "Linux", "Windows"
+    os_version = platform.release()  # e.g. "23.4.0"
+    shell = os.environ.get("SHELL", "unknown")
+
+    smart_system_prompt = (
+        "You are a command-line assistant. The user will describe what they want to do "
+        "and you must respond with ONLY the exact shell command to accomplish it. "
+        "Do not include any explanation, markdown formatting, code fences, or extra text. "
+        "Respond with a single command (use && or | to chain if needed). "
+        "If the request is ambiguous, make a reasonable assumption and provide the most common command.\n"
+        f"Platform: {os_info} {os_version}, Shell: {shell}. "
+        "Use commands and flags compatible with this platform."
+    )
+    if command_history:
+        history_lines = []
+        for entry in command_history:
+            history_lines.append(f"User: {entry['prompt']}")
+            history_lines.append(f"$ {entry['command']}")
+            if entry.get("output"):
+                history_lines.append(entry["output"])
+        history_text = "\n".join(history_lines)
+        smart_system_prompt += (
+            f"\n\nRecent smart command history:\n{history_text}\n"
+            "If the user references 'it', 'that', 'this', 'the same', 'instead', etc., "
+            "they are likely referring to a recent command and want a variation of it."
+        )
+    conversation: List[Dict[str, str]] = [
+        {"role": "system", "content": smart_system_prompt},
+        {"role": "user", "content": prompt},
+    ]
+
+    try:
+        # Call the provider, collecting the full response
+        result = call_provider_api(provider, config, prompt, conversation)
+
+        command = ""
+        if isinstance(result, str):
+            command = result.strip()
+        else:
+            for chunk in result:
+                command += chunk
+            command = command.strip()
+
+        # Remove markdown code fences if the LLM wrapped the command
+        if command.startswith("```") and command.endswith("```"):
+            lines = command.split("\n")
+            command = "\n".join(lines[1:-1]).strip()
+        elif command.startswith("`") and command.endswith("`"):
+            command = command.strip("`").strip()
+
+        if not command:
+            print("Error: LLM returned an empty command.")
+            return None
+
+        # Display the command and ask for confirmation
+        print(f"\n  \033[1;36m{command}\033[0m\n")
+        print(
+            "Press \033[1mEnter\033[0m to run, or \033[1many other key\033[0m to abort.",
+            end=" ",
+            flush=True,
+        )
+
+        # Read a single keypress without requiring Enter
+        if os.name == "posix":
+            import tty
+            import termios
+
+            fd = sys.stdin.fileno()
+            old_settings = termios.tcgetattr(fd)
+            try:
+                tty.setraw(fd)
+                ch = sys.stdin.read(1)
+            finally:
+                termios.tcsetattr(fd, termios.TCSADRAIN, old_settings)
+        else:
+            # Windows (or other non-POSIX): fall back to a simple prompt
+            ch = input() or "\n"
+
+        # Check if the key was Enter (\r or \n)
+        if ch in ("\r", "\n"):
+            print()  # newline after the keypress
+            entry: Dict[str, str] = {"prompt": prompt, "command": command}
+            capture_output = config.smart_context_output == "true"
+            chunks: list[str] = []
+            try:
+                if capture_output:
+                    # Stream output live to the terminal while collecting it
+                    proc = subprocess.Popen(
+                        command,
+                        shell=True,
+                        stdout=subprocess.PIPE,
+                        stderr=subprocess.STDOUT,
+                        text=True,
+                    )
+                    for line in proc.stdout:  # type: ignore[union-attr]
+                        print(line, end="", flush=True)
+                        chunks.append(line)
+                    proc.wait()
+                else:
+                    subprocess.run(command, shell=True)
+            except KeyboardInterrupt:
+                if is_repl:
+                    print("\n\nCommand interrupted.")
+            # Always save whatever output was captured (including partial
+            # output when the command was interrupted with Ctrl+C)
+            if capture_output and chunks:
+                entry["output"] = "".join(chunks).strip()
+            # Save the command so the shell hook can inject it
+            # into live history (press up-arrow to recall)
+            if not is_repl or config.repl_commands_to_shell_history == "true":
+                write_last_command(command)
+        else:
+            print("\nAborted.")
+            entry = {"prompt": prompt, "command": command}
+
+        return entry
+
+    except Exception as e:
+        print(f"Error: {str(e)}")
+        return None
+
+
+def process_smart_command(config: LaskConfig, prompt: str) -> None:
+    """
+    Process a prompt in smart command mode (one-off, non-REPL).
+    Wraps run_smart_command with shell hook setup and exit handling.
+
+    Args:
+        config (LaskConfig): Configuration object
+        prompt (str): The user's natural language description of a command
+    """
+    # Make sure the shell hook is installed so up-arrow recall works
+    ensure_shell_hook(config)
+
+    if run_smart_command(config, prompt) is None:
+        sys.exit(1)
+
+
+# Shell hook snippet for zsh
+_ZSH_HOOK = """
+# lask: inject smart-command into live shell history
+_lask_precmd() {
+    local f=~/.lask_last_command
+    if [[ -f "$f" ]]; then
+        local cmd="$(<"$f")"
+        rm -f "$f"
+        cmd="${cmd//\\\\n/$'\\n'}"
+        print -s -- "$cmd"
+    fi
+}
+precmd_functions+=(_lask_precmd)"""
+
+# Shell hook snippet for bash
+_BASH_HOOK = (
+    "\n# lask: inject smart-command into live shell history\n"
+    "_lask_prompt_cmd() {\n"
+    "    local f=~/.lask_last_command\n"
+    '    if [[ -f "$f" ]]; then\n'
+    '        local cmd="$(cat "$f")"\n'
+    '        rm -f "$f"\n'
+    "        cmd=\"${cmd//\\\\n/$'\\n'}\"\n"
+    '        history -s "$cmd"\n'
+    "    fi\n"
+    "}\n"
+    'PROMPT_COMMAND="_lask_prompt_cmd;${PROMPT_COMMAND}"\n'
+)
+
+
+def ensure_shell_hook(config: LaskConfig) -> None:
+    """
+    Ensure the lask shell hook is installed in the user's shell rc file.
+    - If already installed in the rc file, do nothing.
+    - If the user previously declined (shell_hook = false in config), do nothing.
+    - Otherwise, prompt the user to install it.
+    """
+    # User already declined
+    if config.shell_hook == "false":
+        return
+
+    shell = os.environ.get("SHELL", "")
+
+    if "zsh" in shell:
+        rc_file = os.path.expanduser("~/.zshrc")
+        hook = _ZSH_HOOK
+    else:
+        rc_file = os.path.expanduser("~/.bashrc")
+        hook = _BASH_HOOK
+
+    try:
+        # Check if hook is already present
+        if os.path.exists(rc_file):
+            with open(rc_file, "r") as f:
+                contents = f.read()
+                if "_lask_precmd" in contents or "_lask_prompt_cmd" in contents:
+                    # Already installed, save so we don't check the file again
+                    if config.shell_hook != "true":
+                        config.shell_hook = "true"
+                        config.save_setting("default", "shell_hook", "true")
+                    return
+
+        # Not installed yet and user hasn't been asked — prompt them
+        print(
+            "\n\033[33mlask can add a small shell hook to your "
+            f"{os.path.basename(rc_file)} so that commands from smart mode "
+            "appear in your shell history (press \u2191 to recall).\033[0m"
+        )
+        answer = input("Install shell hook? [Y/n] ").strip().lower()
+
+        if answer in ("", "y", "yes"):
+            with open(rc_file, "a") as f:
+                f.write(hook)
+            config.shell_hook = "true"
+            config.save_setting("default", "shell_hook", "true")
+            print(
+                f"\033[32mInstalled. Run \033[1msource {rc_file}\033[0;32m "
+                f"or open a new terminal to activate.\033[0m\n"
+            )
+        else:
+            config.shell_hook = "false"
+            config.save_setting("default", "shell_hook", "false")
+            print("Skipped. You won't be asked again.\n")
+
+    except Exception:
+        pass
+
+
+def print_shell_init() -> None:
+    """
+    Print the shell hook that should be added to ~/.zshrc or ~/.bashrc.
+    This hook injects the last smart-command into the live shell history
+    so it can be recalled immediately with the up arrow.
+    """
+    shell = os.environ.get("SHELL", "")
+
+    if "zsh" in shell:
+        print("""# lask: inject smart-command into live shell history
+_lask_precmd() {
+    local f=~/.lask_last_command
+    if [[ -f "$f" ]]; then
+        local cmd="$(cat "$f")"
+        rm -f "$f"
+        print -s "$cmd"
+    fi
+}
+precmd_functions+=(_lask_precmd)""")
+    else:
+        init_code = (
+            "# lask: inject smart-command into live shell history\n"
+            "_lask_prompt_cmd() {\n"
+            "    local f=~/.lask_last_command\n"
+            '    if [[ -f "$f" ]]; then\n'
+            '        local cmd="$(cat "$f")"\n'
+            '        rm -f "$f"\n'
+            '        history -s "$cmd"\n'
+            "    fi\n"
+            "}\n"
+            'PROMPT_COMMAND="_lask_prompt_cmd;${PROMPT_COMMAND}"'
+        )
+        print(init_code)
 
 
 def main() -> None:
@@ -462,6 +859,11 @@ def main() -> None:
     """
     # Load config from file
     config = LaskConfig.load()
+
+    # Handle --shell-init flag
+    if len(sys.argv) == 2 and sys.argv[1] == "--shell-init":
+        print_shell_init()
+        sys.exit(0)
 
     # Check if input is coming from a pipe
     if not sys.stdin.isatty():
@@ -489,13 +891,25 @@ def main() -> None:
         # Get the prompt from command line arguments
         prompt: str = " ".join(sys.argv[1:])
 
-        # Process the command line input as a one-off prompt
-        process_one_off_prompt(config, prompt)
+        # Determine whether to use smart command mode
+        smart = config.smart_command
+        if smart == "true":
+            process_smart_command(config, prompt)
+        elif smart == "auto":
+            if classify_prompt(config, prompt):
+                process_smart_command(config, prompt)
+            else:
+                process_one_off_prompt(config, prompt)
+        else:
+            # smart_command is false or unrecognised — normal prompt
+            process_one_off_prompt(config, prompt)
 
 
 def process_one_off_prompt(config: LaskConfig, prompt: str) -> None:
     """
     Process a one-off prompt without maintaining conversation context.
+
+    Uses ChatHistory for consistent system prompt handling across modes.
 
     Args:
         config (LaskConfig): Configuration object
@@ -511,21 +925,18 @@ def process_one_off_prompt(config: LaskConfig, prompt: str) -> None:
         )
         sys.exit(1)
 
+    # Build conversation with system prompt via ChatHistory
+    history = ChatHistory(config, provider)
+    history.add_user_message(prompt)
+
     try:
         # Call the appropriate API based on the provider using the provider modules
-        result: Union[str, Iterator[str]] = call_provider_api(provider, config, prompt)
+        result: Union[str, Iterator[str]] = call_provider_api(
+            provider, config, prompt, history.messages
+        )
 
-        # Handle streaming vs non-streaming responses
-        if isinstance(result, str):
-            # Non-streaming response - full text is returned at once
-            print(result)
-        else:
-            # Streaming response - print chunks as they arrive in real-time
-            # This provides immediate feedback as the LLM generates content
-            for chunk in result:
-                # Print without buffering and without newline to create a continuous output
-                print(chunk, end="", flush=True)
-            print()  # Add a newline at the end of the complete response
+        # Process the response (handles both streaming and non-streaming)
+        process_response(result)
 
     except ImportError as e:
         print(f"Error: {str(e)}")

@@ -10,6 +10,7 @@ Ask LLMs right from the terminal.
 - Streaming responses
 - Repl mode for interactive use, with temporary chat history
 - Pipe input support
+- **Smart command mode**: describe what you want in plain English and lask translates it into a shell command, with confirmation before execution
 
 ## Installation
 
@@ -31,19 +32,75 @@ lask
 
 ==== Lask REPL Mode ====
 Using provider: openai
-Enter your prompts. Type 'exit' or 'quit' to end the session.
-Press Ctrl+C to interrupt a response.
+Smart command: auto
 
 > What movie is this quote from? "that still only counts as one"
 LLM response here...
 > When was that movie released?
 ```
 
+Smart command mode also works in the REPL. When `smart_command` is `auto` or `true`, the REPL automatically detects command requests and handles them the same way — propose, confirm, execute:
+
+```
+> show disk usage for the current directory
+
+  du -sh .
+
+Press Enter to run, or any other key to abort.
+
+> explain what du does
+The `du` command estimates file space usage...
+```
+
+REPL commands:
+
+| Command   | Description |
+|-----------|-------------|
+| `!help`   | Show available REPL commands |
+| `!clear`  | Clear the screen |
+| `!history` | Show prompt history |
+| `!vi`     | Switch to Vi editing mode |
+| `!emacs`  | Switch to Emacs editing mode |
+| `exit` / `quit` | Exit the REPL |
+| `Ctrl+C`  | Interrupt a running command or response |
+| `Ctrl+D`  | Exit the REPL |
+
 Or via pipe:
 
 ```bash
 echo "What movie is this quote from? \"that still only counts as one\"" | lask
 ```
+
+### Smart Command Mode
+
+By default, lask automatically detects if your prompt is asking for a shell command. When it is, it translates your natural language into a command, shows it to you, and waits for confirmation:
+
+```bash
+$ lask show diff between current branch and main
+
+  git diff HEAD..main
+
+Press Enter to run, or any other key to abort.
+```
+
+Press **Enter** to execute, or any other key to abort. The executed command is added to your shell history, so you can press **↑** to recall and re-run or edit it.
+
+The behaviour is controlled by the `smart_command` setting (default: `auto`):
+
+| Value   | Behaviour |
+|---------|-----------|
+| `auto`  | LLM decides if the prompt is a command request or a general question |
+| `true`  | Always treat the prompt as a command request |
+| `false` | Never use smart command mode, always answer normally |
+
+In REPL mode, smart command keeps a rolling history of your interactions so you
+can reference them naturally ("do the same but with `-v`", "now compress that",
+etc.). Two settings control what is included:
+
+| Setting                  | Default | Description |
+|--------------------------|---------|-------------|
+| `smart_context_commands` | `true`  | Include previous prompts and commands in context |
+| `smart_context_output`   | `false` | Also capture and include command output |
 
 ## Setup
 
@@ -109,6 +166,14 @@ system_prompt = Always answer questions concisely.
 
 [openai]
 system_prompt = You are a helpful AI assistant.  # Provider-specific
+```
+
+### Smart Command
+```ini
+[default]
+smart_command = auto              # auto, true, or false
+smart_context_commands = true      # include command history in context
+smart_context_output = false       # include command output in context
 ```
 
 ### Provider-Specific Settings
