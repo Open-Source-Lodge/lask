@@ -499,11 +499,14 @@ def write_last_command(command: str) -> None:
     Write the command to ~/.lask_last_command so the shell hook
     (installed via `lask --shell-init`) can inject it into the
     live shell history on the next prompt.
+    Newlines are escaped to prevent the shell from splitting the command.
     """
     try:
         last_cmd_path = os.path.expanduser("~/.lask_last_command")
+        # Escape backslashes first, then newlines
+        escaped = command.replace("\\", "\\\\").replace("\n", "\\n")
         with open(last_cmd_path, "w") as f:
-            f.write(command)
+            f.write(escaped)
     except Exception:
         pass
 
@@ -518,7 +521,7 @@ def process_smart_command(config: LaskConfig, prompt: str) -> None:
         prompt (str): The user's natural language description of a command
     """
     # Make sure the shell hook is installed so up-arrow recall works
-    ensure_shell_hook()
+    ensure_shell_hook(config)
 
     provider: str = config.get("provider", "openai").lower()
 
@@ -530,12 +533,19 @@ def process_smart_command(config: LaskConfig, prompt: str) -> None:
 
     # Build a conversation with a system prompt that instructs the LLM
     # to only return a shell command
+    import platform
+    os_info = platform.system()       # e.g. "Darwin", "Linux", "Windows"
+    os_version = platform.release()   # e.g. "23.4.0"
+    shell = os.environ.get("SHELL", "unknown")
+
     smart_system_prompt = (
         "You are a command-line assistant. The user will describe what they want to do "
         "and you must respond with ONLY the exact shell command to accomplish it. "
         "Do not include any explanation, markdown formatting, code fences, or extra text. "
         "Respond with a single command (use && or | to chain if needed). "
-        "If the request is ambiguous, make a reasonable assumption and provide the most common command."
+        "If the request is ambiguous, make a reasonable assumption and provide the most common command.\n"
+        f"Platform: {os_info} {os_version}, Shell: {shell}. "
+        "Use commands and flags compatible with this platform."
     )
     conversation: List[Dict[str, str]] = [
         {"role": "system", "content": smart_system_prompt},
@@ -598,12 +608,14 @@ def process_smart_command(config: LaskConfig, prompt: str) -> None:
 
 
 # Shell hook snippet for zsh
-_ZSH_HOOK = """\n# lask: inject smart-command into live shell history
+_ZSH_HOOK = """
+# lask: inject smart-command into live shell history
 _lask_precmd() {
     local f=~/.lask_last_command
     if [[ -f "$f" ]]; then
         local cmd="$(<"$f")"
         rm -f "$f"
+        cmd="${cmd//\\\\n/$'\\n'}"
         print -s -- "$cmd"
     fi
 }
@@ -617,6 +629,7 @@ _BASH_HOOK = (
     '    if [[ -f "$f" ]]; then\n'
     '        local cmd="$(cat "$f")"\n'
     '        rm -f "$f"\n'
+    "        cmd=\"${cmd//\\\\n/$'\\n'}\"\n"
     '        history -s "$cmd"\n'
     "    fi\n"
     "}\n"
@@ -624,11 +637,17 @@ _BASH_HOOK = (
 )
 
 
-def ensure_shell_hook() -> None:
+def ensure_shell_hook(config: LaskConfig) -> None:
     """
     Ensure the lask shell hook is installed in the user's shell rc file.
-    If missing, append it and notify the user once.
+    - If already installed in the rc file, do nothing.
+    - If the user previously declined (shell_hook = false in config), do nothing.
+    - Otherwise, prompt the user to install it.
     """
+    # User already declined
+    if config.shell_hook == "false":
+        return
+
     shell = os.environ.get("SHELL", "")
 
     if "zsh" in shell:
@@ -644,17 +663,30 @@ def ensure_shell_hook() -> None:
             with open(rc_file, "r") as f:
                 contents = f.read()
                 if "_lask_precmd" in contents or "_lask_prompt_cmd" in contents:
-                    return  # Already installed
+                    # Already installed, save so we don't check the file again
+                    if config.shell_hook != "true":
+                        config.shell_hook = "true"
+                        config.save_setting("default", "shell_hook", "true")
+                    return
 
-        # Append the hook
-        with open(rc_file, "a") as f:
-            f.write(hook)
+        # Not installed yet and user hasn't been asked — prompt them
+        print("\n\033[33mlask can add a small shell hook to your "
+              f"{os.path.basename(rc_file)} so that commands from smart mode "
+              "appear in your shell history (press \u2191 to recall).\033[0m")
+        answer = input("Install shell hook? [Y/n] ").strip().lower()
 
-        print(
-            f"\033[33mInstalled lask shell hook in {rc_file}.\n"
-            f"Run \033[1msource {rc_file}\033[0;33m or open a new terminal "
-            f"for up-arrow history to work.\033[0m\n"
-        )
+        if answer in ("", "y", "yes"):
+            with open(rc_file, "a") as f:
+                f.write(hook)
+            config.shell_hook = "true"
+            config.save_setting("default", "shell_hook", "true")
+            print(f"\033[32mInstalled. Run \033[1msource {rc_file}\033[0;32m "
+                  f"or open a new terminal to activate.\033[0m\n")
+        else:
+            config.shell_hook = "false"
+            config.save_setting("default", "shell_hook", "false")
+            print("Skipped. You won't be asked again.\n")
+
     except Exception:
         pass
 
