@@ -56,6 +56,8 @@ class LaskConfig:
     smart_context_commands: str = "true"
     # Whether to include command output in smart command LLM context
     smart_context_output: str = "false"
+    # Whether smart commands from the REPL are added to shell history
+    repl_commands_to_shell_history: str = "false"
     # Whether the user has accepted/declined the shell hook install
     # None = not yet asked, "true" = accepted, "false" = declined
     shell_hook: Optional[str] = None
@@ -96,6 +98,7 @@ class LaskConfig:
                             elif key in (
                                 "smart_context_commands",
                                 "smart_context_output",
+                                "repl_commands_to_shell_history",
                             ):
                                 setattr(config, key, value.lower().strip())
                             elif key == "shell_hook":

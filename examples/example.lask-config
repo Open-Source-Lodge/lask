@@ -24,6 +24,10 @@ provider = openai
 # When true, stdout/stderr is captured and added alongside the command.
 # smart_context_output = false
 
+# Add smart commands to shell history so you can recall them with up-arrow.
+# Requires the shell hook (installed automatically when smart_command is enabled).
+# repl_commands_to_shell_history = false
+
 # OpenAI-specific configuration
 [openai]
 # Your OpenAI API key. If not specified, falls back to the default api_key

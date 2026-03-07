@@ -285,6 +285,7 @@ def handle_repl_command(cmd, history):
     """
     if cmd == "help":
         print("\nREPL Commands:")
+        print("  ! <cmd>   - Run a shell command directly")
         print("  !help     - Show this help")
         print("  !clear    - Clear the screen")
         print("  !history  - Show command history")
@@ -335,6 +336,7 @@ def display_repl_help():
 
     # Show common commands
     print("\nCommon commands:")
+    print("- Type '! <cmd>' to run a shell command directly")
     print("- Type '!help' for REPL help")
     print("- Type '!clear' to clear the screen")
     print("- Type '!history' to show command history")
@@ -368,7 +370,7 @@ def repl_mode(config: LaskConfig) -> None:
 
     # Check smart command setting for REPL routing
     smart = config.smart_command
-    if smart in ("true", "auto"):
+    if smart in ("true", "auto") and config.repl_commands_to_shell_history == "true":
         ensure_shell_hook(config)
 
     # Display welcome message
@@ -406,7 +408,38 @@ def repl_mode(config: LaskConfig) -> None:
 
             # Check for special REPL commands
             if user_input.startswith("!"):
-                cmd = user_input[1:].strip().lower()
+                rest = user_input[1:]
+                # "! <command>" runs a shell command directly (treated like a smart command)
+                if rest.startswith(" ") and rest.strip():
+                    command = rest.strip()
+                    entry: Dict[str, str] = {"prompt": user_input, "command": command}
+                    capture_output = config.smart_context_output == "true"
+                    chunks: list[str] = []
+                    try:
+                        if capture_output:
+                            proc = subprocess.Popen(
+                                command,
+                                shell=True,
+                                stdout=subprocess.PIPE,
+                                stderr=subprocess.STDOUT,
+                                text=True,
+                            )
+                            for line in proc.stdout:  # type: ignore[union-attr]
+                                print(line, end="", flush=True)
+                                chunks.append(line)
+                            proc.wait()
+                        else:
+                            subprocess.run(command, shell=True)
+                    except KeyboardInterrupt:
+                        print("\n\nCommand interrupted.")
+                    if capture_output and chunks:
+                        entry["output"] = "".join(chunks).strip()
+                    if config.repl_commands_to_shell_history == "true":
+                        write_last_command(command)
+                    history.add_command_entry(entry)
+                    history.add_smart_command_context(entry)
+                    continue
+                cmd = rest.strip().lower()
                 if handle_repl_command(cmd, history):
                     continue
 
@@ -656,7 +689,8 @@ def run_smart_command(
                 entry["output"] = "".join(chunks).strip()
             # Save the command so the shell hook can inject it
             # into live history (press up-arrow to recall)
-            write_last_command(command)
+            if not is_repl or config.repl_commands_to_shell_history == "true":
+                write_last_command(command)
         else:
             print("\nAborted.")
             entry = {"prompt": prompt, "command": command}
