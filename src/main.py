@@ -393,6 +393,7 @@ def repl_mode(config: LaskConfig) -> None:
 
     # Check smart command setting for REPL routing
     smart = config.smart_command
+    command_history: List[Dict[str, str]] = []
     if smart in ("true", "auto"):
         ensure_shell_hook(config)
 
@@ -449,7 +450,37 @@ def repl_mode(config: LaskConfig) -> None:
             if use_smart:
                 # Smart command: translate to shell command, don't add to conversation
                 try:
-                    run_smart_command(config, user_input, is_repl=True)
+                    hist = (
+                        command_history
+                        if config.smart_context_commands == "true"
+                        else []
+                    )
+                    result = run_smart_command(
+                        config, user_input, is_repl=True, command_history=hist
+                    )
+                    if result is not None:
+                        command_history.append(result)
+                        # Add to conversation so follow-up questions can
+                        # reference the command and its output
+                        parts = []
+                        if config.smart_context_commands == "true":
+                            parts.append(f"[Ran command: {result['command']}]")
+                        else:
+                            parts.append(
+                                "[A command was executed but command context is disabled. Enable with smart_context_commands=true]"
+                            )
+                        if (
+                            config.smart_context_output == "true"
+                            and result.get("output")
+                        ):
+                            parts.append(f"[Output:\n{result['output']}\n]")
+                        else:
+                            parts.append(
+                                "[Command output context is disabled. Enable with smart_context_output=true]"
+                            )
+                        conversation.append(
+                            {"role": "assistant", "content": "\n".join(parts)}
+                        )
                 except Exception as e:
                     print(f"\nError: {str(e)}")
                 continue
@@ -534,7 +565,12 @@ def write_last_command(command: str) -> None:
         pass
 
 
-def run_smart_command(config: LaskConfig, prompt: str, is_repl: bool = False) -> bool:
+def run_smart_command(
+    config: LaskConfig,
+    prompt: str,
+    is_repl: bool = False,
+    command_history: List[Dict[str, str]] | None = None,
+) -> Dict[str, str] | None:
     """
     Core smart command logic: send the prompt to the LLM, get back a shell
     command, display it, and execute after user confirmation.
@@ -544,9 +580,13 @@ def run_smart_command(config: LaskConfig, prompt: str, is_repl: bool = False) ->
     Args:
         config (LaskConfig): Configuration object
         prompt (str): The user's natural language description of a command
+        is_repl (bool): Whether running inside the REPL (affects interrupt msg)
+        command_history (list | None): Previous interactions, each entry is
+            {"prompt": "...", "command": "...", "output": "..."}
 
     Returns:
-        bool: True if the command ran successfully, False on error or abort
+        dict | None: {"prompt": ..., "command": ..., "output": ...} for the
+                     executed command, or None on error.
     """
     provider: str = config.get("provider", "openai").lower()
 
@@ -554,7 +594,7 @@ def run_smart_command(config: LaskConfig, prompt: str, is_repl: bool = False) ->
         print(
             f"Error: Unsupported provider '{provider}'. Supported providers are: {', '.join(LaskConfig.SUPPORTED_PROVIDERS)}"
         )
-        return False
+        return None
 
     # Build a conversation with a system prompt that instructs the LLM
     # to only return a shell command
@@ -571,6 +611,19 @@ def run_smart_command(config: LaskConfig, prompt: str, is_repl: bool = False) ->
         f"Platform: {os_info} {os_version}, Shell: {shell}. "
         "Use commands and flags compatible with this platform."
     )
+    if command_history:
+        history_lines = []
+        for entry in command_history:
+            history_lines.append(f"User: {entry['prompt']}")
+            history_lines.append(f"$ {entry['command']}")
+            if entry.get("output"):
+                history_lines.append(entry["output"])
+        history_text = "\n".join(history_lines)
+        smart_system_prompt += (
+            f"\n\nRecent smart command history:\n{history_text}\n"
+            "If the user references 'it', 'that', 'this', 'the same', 'instead', etc., "
+            "they are likely referring to a recent command and want a variation of it."
+        )
     conversation: List[Dict[str, str]] = [
         {"role": "system", "content": smart_system_prompt},
         {"role": "user", "content": prompt},
@@ -597,7 +650,7 @@ def run_smart_command(config: LaskConfig, prompt: str, is_repl: bool = False) ->
 
         if not command:
             print("Error: LLM returned an empty command.")
-            return False
+            return None
 
         # Display the command and ask for confirmation
         print(f"\n  \033[1;36m{command}\033[0m\n")
@@ -619,8 +672,26 @@ def run_smart_command(config: LaskConfig, prompt: str, is_repl: bool = False) ->
         # Check if the key was Enter (\r or \n)
         if ch in ("\r", "\n"):
             print()  # newline after the keypress
+            entry: Dict[str, str] = {"prompt": prompt, "command": command}
+            capture_output = config.smart_context_output == "true"
             try:
-                subprocess.run(command, shell=True)
+                if capture_output:
+                    # Stream output live to the terminal while collecting it
+                    proc = subprocess.Popen(
+                        command,
+                        shell=True,
+                        stdout=subprocess.PIPE,
+                        stderr=subprocess.STDOUT,
+                        text=True,
+                    )
+                    chunks: list[str] = []
+                    for line in proc.stdout:  # type: ignore[union-attr]
+                        print(line, end="", flush=True)
+                        chunks.append(line)
+                    proc.wait()
+                    entry["output"] = "".join(chunks).strip()
+                else:
+                    subprocess.run(command, shell=True)
             except KeyboardInterrupt:
                 if is_repl:
                     print("\n\nCommand interrupted.")
@@ -629,12 +700,13 @@ def run_smart_command(config: LaskConfig, prompt: str, is_repl: bool = False) ->
             write_last_command(command)
         else:
             print("\nAborted.")
+            entry = {"prompt": prompt, "command": command}
 
-        return True
+        return entry
 
     except Exception as e:
         print(f"Error: {str(e)}")
-        return False
+        return None
 
 
 def process_smart_command(config: LaskConfig, prompt: str) -> None:
@@ -649,7 +721,7 @@ def process_smart_command(config: LaskConfig, prompt: str) -> None:
     # Make sure the shell hook is installed so up-arrow recall works
     ensure_shell_hook(config)
 
-    if not run_smart_command(config, prompt):
+    if run_smart_command(config, prompt) is None:
         sys.exit(1)
 
 

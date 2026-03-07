@@ -93,6 +93,15 @@ The behaviour is controlled by the `smart_command` setting (default: `auto`):
 | `true`  | Always treat the prompt as a command request |
 | `false` | Never use smart command mode, always answer normally |
 
+In REPL mode, smart command keeps a rolling history of your interactions so you
+can reference them naturally ("do the same but with `-v`", "now compress that",
+etc.). Two settings control what is included:
+
+| Setting                  | Default | Description |
+|--------------------------|---------|-------------|
+| `smart_context_commands` | `true`  | Include previous prompts and commands in context |
+| `smart_context_output`   | `false` | Also capture and include command output |
+
 ## Setup
 
 1. Get API keys from your provider:
@@ -162,7 +171,9 @@ system_prompt = You are a helpful AI assistant.  # Provider-specific
 ### Smart Command
 ```ini
 [default]
-smart_command = auto  # auto, true, or false
+smart_command = auto              # auto, true, or false
+smart_context_commands = true      # include command history in context
+smart_context_output = false       # include command output in context
 ```
 
 ### Provider-Specific Settings

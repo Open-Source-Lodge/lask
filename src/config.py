@@ -52,6 +52,10 @@ class LaskConfig:
     # Smart command mode: true, false, or auto
     # auto = let the LLM decide if the prompt is a command request
     smart_command: str = "auto"
+    # Whether to include previous commands in smart command LLM context
+    smart_context_commands: str = "true"
+    # Whether to include command output in smart command LLM context
+    smart_context_output: str = "false"
     # Whether the user has accepted/declined the shell hook install
     # None = not yet asked, "true" = accepted, "false" = declined
     shell_hook: Optional[str] = None
@@ -88,6 +92,8 @@ class LaskConfig:
                             if key in ["system_prompt"]:
                                 setattr(config, key, value)
                             elif key == "smart_command":
+                                setattr(config, key, value.lower().strip())
+                            elif key in ("smart_context_commands", "smart_context_output"):
                                 setattr(config, key, value.lower().strip())
                             elif key == "shell_hook":
                                 setattr(config, key, value.lower().strip())
