@@ -18,6 +18,7 @@ Features:
 
 import sys
 import os
+import platform
 import subprocess
 import tty
 import termios
@@ -390,9 +391,16 @@ def repl_mode(config: LaskConfig) -> None:
     # Initialize conversation history
     conversation = setup_conversation(config, provider)
 
+    # Check smart command setting for REPL routing
+    smart = config.smart_command
+    if smart in ("true", "auto"):
+        ensure_shell_hook(config)
+
     # Display welcome message
     print("\n==== Lask REPL Mode ====")
     print(f"Using provider: {provider}")
+    if smart in ("true", "auto"):
+        print(f"Smart command: {smart}")
 
     # Show help information
     display_repl_help()
@@ -431,7 +439,22 @@ def repl_mode(config: LaskConfig) -> None:
             if not user_input.strip():
                 continue
 
-            # Add user message to conversation
+            # Route through smart command if applicable
+            use_smart = False
+            if smart == "true":
+                use_smart = True
+            elif smart == "auto":
+                use_smart = classify_prompt(config, user_input)
+
+            if use_smart:
+                # Smart command: translate to shell command, don't add to conversation
+                try:
+                    run_smart_command(config, user_input, is_repl=True)
+                except Exception as e:
+                    print(f"\nError: {str(e)}")
+                continue
+
+            # Regular prompt: add to conversation and get response
             conversation.append({"role": "user", "content": user_input})
 
             try:
@@ -511,31 +534,32 @@ def write_last_command(command: str) -> None:
         pass
 
 
-def process_smart_command(config: LaskConfig, prompt: str) -> None:
+def run_smart_command(config: LaskConfig, prompt: str, is_repl: bool = False) -> bool:
     """
-    Process a prompt in smart command mode: send the prompt to the LLM,
-    get back a shell command, and execute it after user confirmation.
+    Core smart command logic: send the prompt to the LLM, get back a shell
+    command, display it, and execute after user confirmation.
+
+    This is the reusable core used by both one-off and REPL modes.
 
     Args:
         config (LaskConfig): Configuration object
         prompt (str): The user's natural language description of a command
-    """
-    # Make sure the shell hook is installed so up-arrow recall works
-    ensure_shell_hook(config)
 
+    Returns:
+        bool: True if the command ran successfully, False on error or abort
+    """
     provider: str = config.get("provider", "openai").lower()
 
     if provider not in LaskConfig.SUPPORTED_PROVIDERS:
         print(
             f"Error: Unsupported provider '{provider}'. Supported providers are: {', '.join(LaskConfig.SUPPORTED_PROVIDERS)}"
         )
-        sys.exit(1)
+        return False
 
     # Build a conversation with a system prompt that instructs the LLM
     # to only return a shell command
-    import platform
-    os_info = platform.system()       # e.g. "Darwin", "Linux", "Windows"
-    os_version = platform.release()   # e.g. "23.4.0"
+    os_info = platform.system()  # e.g. "Darwin", "Linux", "Windows"
+    os_version = platform.release()  # e.g. "23.4.0"
     shell = os.environ.get("SHELL", "unknown")
 
     smart_system_prompt = (
@@ -573,7 +597,7 @@ def process_smart_command(config: LaskConfig, prompt: str) -> None:
 
         if not command:
             print("Error: LLM returned an empty command.")
-            sys.exit(1)
+            return False
 
         # Display the command and ask for confirmation
         print(f"\n  \033[1;36m{command}\033[0m\n")
@@ -595,15 +619,37 @@ def process_smart_command(config: LaskConfig, prompt: str) -> None:
         # Check if the key was Enter (\r or \n)
         if ch in ("\r", "\n"):
             print()  # newline after the keypress
-            subprocess.run(command, shell=True)
+            try:
+                subprocess.run(command, shell=True)
+            except KeyboardInterrupt:
+                if is_repl:
+                    print("\n\nCommand interrupted.")
             # Save the command so the shell hook can inject it
             # into live history (press up-arrow to recall)
             write_last_command(command)
         else:
             print("\nAborted.")
 
+        return True
+
     except Exception as e:
         print(f"Error: {str(e)}")
+        return False
+
+
+def process_smart_command(config: LaskConfig, prompt: str) -> None:
+    """
+    Process a prompt in smart command mode (one-off, non-REPL).
+    Wraps run_smart_command with shell hook setup and exit handling.
+
+    Args:
+        config (LaskConfig): Configuration object
+        prompt (str): The user's natural language description of a command
+    """
+    # Make sure the shell hook is installed so up-arrow recall works
+    ensure_shell_hook(config)
+
+    if not run_smart_command(config, prompt):
         sys.exit(1)
 
 
@@ -670,9 +716,11 @@ def ensure_shell_hook(config: LaskConfig) -> None:
                     return
 
         # Not installed yet and user hasn't been asked — prompt them
-        print("\n\033[33mlask can add a small shell hook to your "
-              f"{os.path.basename(rc_file)} so that commands from smart mode "
-              "appear in your shell history (press \u2191 to recall).\033[0m")
+        print(
+            "\n\033[33mlask can add a small shell hook to your "
+            f"{os.path.basename(rc_file)} so that commands from smart mode "
+            "appear in your shell history (press \u2191 to recall).\033[0m"
+        )
         answer = input("Install shell hook? [Y/n] ").strip().lower()
 
         if answer in ("", "y", "yes"):
@@ -680,8 +728,10 @@ def ensure_shell_hook(config: LaskConfig) -> None:
                 f.write(hook)
             config.shell_hook = "true"
             config.save_setting("default", "shell_hook", "true")
-            print(f"\033[32mInstalled. Run \033[1msource {rc_file}\033[0;32m "
-                  f"or open a new terminal to activate.\033[0m\n")
+            print(
+                f"\033[32mInstalled. Run \033[1msource {rc_file}\033[0;32m "
+                f"or open a new terminal to activate.\033[0m\n"
+            )
         else:
             config.shell_hook = "false"
             config.save_setting("default", "shell_hook", "false")
