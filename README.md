@@ -32,13 +32,38 @@ lask
 
 ==== Lask REPL Mode ====
 Using provider: openai
-Enter your prompts. Type 'exit' or 'quit' to end the session.
-Press Ctrl+C to interrupt a response.
+Smart command: auto
 
 > What movie is this quote from? "that still only counts as one"
 LLM response here...
 > When was that movie released?
 ```
+
+Smart command mode also works in the REPL. When `smart_command` is `auto` or `true`, the REPL automatically detects command requests and handles them the same way — propose, confirm, execute:
+
+```
+> show disk usage for the current directory
+
+  du -sh .
+
+Press Enter to run, or any other key to abort.
+
+> explain what du does
+The `du` command estimates file space usage...
+```
+
+REPL commands:
+
+| Command   | Description |
+|-----------|-------------|
+| `!help`   | Show available REPL commands |
+| `!clear`  | Clear the screen |
+| `!history` | Show prompt history |
+| `!vi`     | Switch to Vi editing mode |
+| `!emacs`  | Switch to Emacs editing mode |
+| `exit` / `quit` | Exit the REPL |
+| `Ctrl+C`  | Interrupt a running command or response |
+| `Ctrl+D`  | Exit the REPL |
 
 Or via pipe:
 
