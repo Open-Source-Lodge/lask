@@ -10,6 +10,12 @@ provider = openai
 # This lets you customize how the AI responds to all your queries
 # system_prompt = Always answer questions concisely and directly.
 
+# Smart command mode: when enabled, "lask <prompt>" translates your
+# natural language prompt into a shell command and runs it after confirmation.
+# Will never run without your explicit confirmation, by pressing enter.
+# Options: true (always convert prompt to command), false (never convert prompt to command), auto (let the LLM decide if it should produce a command)
+# smart_command = auto
+
 # OpenAI-specific configuration
 [openai]
 # Your OpenAI API key. If not specified, falls back to the default api_key

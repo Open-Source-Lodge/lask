@@ -49,6 +49,9 @@ class LaskConfig:
     providers: Dict[str, ProviderConfig] = field(default_factory=dict)
     # Default system prompt
     system_prompt: Optional[str] = None
+    # Smart command mode: true, false, or auto
+    # auto = let the LLM decide if the prompt is a command request
+    smart_command: str = "auto"
 
     # Class constants
     CONFIG_PATH: ClassVar[Path] = Path.home() / ".lask-config"
@@ -81,6 +84,8 @@ class LaskConfig:
                             # Handle type conversion for specific fields
                             if key in ["system_prompt"]:
                                 setattr(config, key, value)
+                            elif key == "smart_command":
+                                setattr(config, key, value.lower().strip())
                             else:
                                 setattr(config, key, value)
 

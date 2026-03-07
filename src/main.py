@@ -18,6 +18,9 @@ Features:
 
 import sys
 import os
+import subprocess
+import tty
+import termios
 from typing import Union, Iterator, List, Dict
 import readline  # For better input handling in REPL mode
 import atexit
@@ -449,6 +452,248 @@ def repl_mode(config: LaskConfig) -> None:
         print("\nExiting...")
 
 
+def classify_prompt(config: LaskConfig, prompt: str) -> bool:
+    """
+    Ask the LLM whether the user's prompt is a request for a shell command.
+
+    Args:
+        config (LaskConfig): Configuration object
+        prompt (str): The user's prompt
+
+    Returns:
+        bool: True if the prompt looks like a shell command request
+    """
+    provider: str = config.get("provider", "openai").lower()
+
+    classification_system_prompt = (
+        "You are a classifier. The user will give you a prompt. "
+        "Determine if the user is asking for a shell/terminal command to be executed, "
+        "or if they are asking a general knowledge question. "
+        "Respond with ONLY the single word: command or question. "
+        "Nothing else."
+    )
+    conversation: List[Dict[str, str]] = [
+        {"role": "system", "content": classification_system_prompt},
+        {"role": "user", "content": prompt},
+    ]
+
+    try:
+        result = call_provider_api(provider, config, prompt, conversation)
+
+        answer = ""
+        if isinstance(result, str):
+            answer = result.strip().lower()
+        else:
+            for chunk in result:
+                answer += chunk
+            answer = answer.strip().lower()
+
+        return "command" in answer
+    except Exception:
+        # If classification fails, fall back to normal prompt
+        return False
+
+
+def write_last_command(command: str) -> None:
+    """
+    Write the command to ~/.lask_last_command so the shell hook
+    (installed via `lask --shell-init`) can inject it into the
+    live shell history on the next prompt.
+    """
+    try:
+        last_cmd_path = os.path.expanduser("~/.lask_last_command")
+        with open(last_cmd_path, "w") as f:
+            f.write(command)
+    except Exception:
+        pass
+
+
+def process_smart_command(config: LaskConfig, prompt: str) -> None:
+    """
+    Process a prompt in smart command mode: send the prompt to the LLM,
+    get back a shell command, and execute it after user confirmation.
+
+    Args:
+        config (LaskConfig): Configuration object
+        prompt (str): The user's natural language description of a command
+    """
+    # Make sure the shell hook is installed so up-arrow recall works
+    ensure_shell_hook()
+
+    provider: str = config.get("provider", "openai").lower()
+
+    if provider not in LaskConfig.SUPPORTED_PROVIDERS:
+        print(
+            f"Error: Unsupported provider '{provider}'. Supported providers are: {', '.join(LaskConfig.SUPPORTED_PROVIDERS)}"
+        )
+        sys.exit(1)
+
+    # Build a conversation with a system prompt that instructs the LLM
+    # to only return a shell command
+    smart_system_prompt = (
+        "You are a command-line assistant. The user will describe what they want to do "
+        "and you must respond with ONLY the exact shell command to accomplish it. "
+        "Do not include any explanation, markdown formatting, code fences, or extra text. "
+        "Respond with a single command (use && or | to chain if needed). "
+        "If the request is ambiguous, make a reasonable assumption and provide the most common command."
+    )
+    conversation: List[Dict[str, str]] = [
+        {"role": "system", "content": smart_system_prompt},
+        {"role": "user", "content": prompt},
+    ]
+
+    try:
+        # Call the provider, collecting the full response
+        result = call_provider_api(provider, config, prompt, conversation)
+
+        command = ""
+        if isinstance(result, str):
+            command = result.strip()
+        else:
+            for chunk in result:
+                command += chunk
+            command = command.strip()
+
+        # Remove markdown code fences if the LLM wrapped the command
+        if command.startswith("```") and command.endswith("```"):
+            lines = command.split("\n")
+            command = "\n".join(lines[1:-1]).strip()
+        elif command.startswith("`") and command.endswith("`"):
+            command = command.strip("`").strip()
+
+        if not command:
+            print("Error: LLM returned an empty command.")
+            sys.exit(1)
+
+        # Display the command and ask for confirmation
+        print(f"\n  \033[1;36m{command}\033[0m\n")
+        print(
+            "Press \033[1mEnter\033[0m to run, or \033[1many other key\033[0m to abort.",
+            end=" ",
+            flush=True,
+        )
+
+        # Read a single keypress without requiring Enter
+        fd = sys.stdin.fileno()
+        old_settings = termios.tcgetattr(fd)
+        try:
+            tty.setraw(fd)
+            ch = sys.stdin.read(1)
+        finally:
+            termios.tcsetattr(fd, termios.TCSADRAIN, old_settings)
+
+        # Check if the key was Enter (\r or \n)
+        if ch in ("\r", "\n"):
+            print()  # newline after the keypress
+            subprocess.run(command, shell=True)
+            # Save the command so the shell hook can inject it
+            # into live history (press up-arrow to recall)
+            write_last_command(command)
+        else:
+            print("\nAborted.")
+
+    except Exception as e:
+        print(f"Error: {str(e)}")
+        sys.exit(1)
+
+
+# Shell hook snippet for zsh
+_ZSH_HOOK = """\n# lask: inject smart-command into live shell history
+_lask_precmd() {
+    local f=~/.lask_last_command
+    if [[ -f "$f" ]]; then
+        local cmd="$(<"$f")"
+        rm -f "$f"
+        print -s -- "$cmd"
+    fi
+}
+precmd_functions+=(_lask_precmd)"""
+
+# Shell hook snippet for bash
+_BASH_HOOK = (
+    "\n# lask: inject smart-command into live shell history\n"
+    "_lask_prompt_cmd() {\n"
+    "    local f=~/.lask_last_command\n"
+    '    if [[ -f "$f" ]]; then\n'
+    '        local cmd="$(cat "$f")"\n'
+    '        rm -f "$f"\n'
+    '        history -s "$cmd"\n'
+    "    fi\n"
+    "}\n"
+    'PROMPT_COMMAND="_lask_prompt_cmd;${PROMPT_COMMAND}"\n'
+)
+
+
+def ensure_shell_hook() -> None:
+    """
+    Ensure the lask shell hook is installed in the user's shell rc file.
+    If missing, append it and notify the user once.
+    """
+    shell = os.environ.get("SHELL", "")
+
+    if "zsh" in shell:
+        rc_file = os.path.expanduser("~/.zshrc")
+        hook = _ZSH_HOOK
+    else:
+        rc_file = os.path.expanduser("~/.bashrc")
+        hook = _BASH_HOOK
+
+    try:
+        # Check if hook is already present
+        if os.path.exists(rc_file):
+            with open(rc_file, "r") as f:
+                contents = f.read()
+                if "_lask_precmd" in contents or "_lask_prompt_cmd" in contents:
+                    return  # Already installed
+
+        # Append the hook
+        with open(rc_file, "a") as f:
+            f.write(hook)
+
+        print(
+            f"\033[33mInstalled lask shell hook in {rc_file}.\n"
+            f"Run \033[1msource {rc_file}\033[0;33m or open a new terminal "
+            f"for up-arrow history to work.\033[0m\n"
+        )
+    except Exception:
+        pass
+
+
+def print_shell_init() -> None:
+    """
+    Print the shell hook that should be added to ~/.zshrc or ~/.bashrc.
+    This hook injects the last smart-command into the live shell history
+    so it can be recalled immediately with the up arrow.
+    """
+    shell = os.environ.get("SHELL", "")
+
+    if "zsh" in shell:
+        print("""# lask: inject smart-command into live shell history
+_lask_precmd() {
+    local f=~/.lask_last_command
+    if [[ -f "$f" ]]; then
+        local cmd="$(cat "$f")"
+        rm -f "$f"
+        print -s "$cmd"
+    fi
+}
+precmd_functions+=(_lask_precmd)""")
+    else:
+        init_code = (
+            "# lask: inject smart-command into live shell history\n"
+            "_lask_prompt_cmd() {\n"
+            "    local f=~/.lask_last_command\n"
+            '    if [[ -f "$f" ]]; then\n'
+            '        local cmd="$(cat "$f")"\n'
+            '        rm -f "$f"\n'
+            '        history -s "$cmd"\n'
+            "    fi\n"
+            "}\n"
+            'PROMPT_COMMAND="_lask_prompt_cmd;${PROMPT_COMMAND}"'
+        )
+        print(init_code)
+
+
 def main() -> None:
     """
     Main entry point for the lask CLI tool.
@@ -462,6 +707,11 @@ def main() -> None:
     """
     # Load config from file
     config = LaskConfig.load()
+
+    # Handle --shell-init flag
+    if len(sys.argv) == 2 and sys.argv[1] == "--shell-init":
+        print_shell_init()
+        sys.exit(0)
 
     # Check if input is coming from a pipe
     if not sys.stdin.isatty():
@@ -489,8 +739,18 @@ def main() -> None:
         # Get the prompt from command line arguments
         prompt: str = " ".join(sys.argv[1:])
 
-        # Process the command line input as a one-off prompt
-        process_one_off_prompt(config, prompt)
+        # Determine whether to use smart command mode
+        smart = config.smart_command
+        if smart == "true":
+            process_smart_command(config, prompt)
+        elif smart == "auto":
+            if classify_prompt(config, prompt):
+                process_smart_command(config, prompt)
+            else:
+                process_one_off_prompt(config, prompt)
+        else:
+            # smart_command is false or unrecognised — normal prompt
+            process_one_off_prompt(config, prompt)
 
 
 def process_one_off_prompt(config: LaskConfig, prompt: str) -> None:

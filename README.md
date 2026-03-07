@@ -10,6 +10,7 @@ Ask LLMs right from the terminal.
 - Streaming responses
 - Repl mode for interactive use, with temporary chat history
 - Pipe input support
+- **Smart command mode**: describe what you want in plain English and lask translates it into a shell command, with confirmation before execution
 
 ## Installation
 
@@ -44,6 +45,28 @@ Or via pipe:
 ```bash
 echo "What movie is this quote from? \"that still only counts as one\"" | lask
 ```
+
+### Smart Command Mode
+
+By default, lask automatically detects if your prompt is asking for a shell command. When it is, it translates your natural language into a command, shows it to you, and waits for confirmation:
+
+```bash
+$ lask show diff between current branch and main
+
+  git diff HEAD..main
+
+Press Enter to run, or any other key to abort.
+```
+
+Press **Enter** to execute, or any other key to abort. The executed command is added to your shell history, so you can press **↑** to recall and re-run or edit it.
+
+The behaviour is controlled by the `smart_command` setting (default: `auto`):
+
+| Value   | Behaviour |
+|---------|-----------|
+| `auto`  | LLM decides if the prompt is a command request or a general question |
+| `true`  | Always treat the prompt as a command request |
+| `false` | Never use smart command mode, always answer normally |
 
 ## Setup
 
@@ -109,6 +132,12 @@ system_prompt = Always answer questions concisely.
 
 [openai]
 system_prompt = You are a helpful AI assistant.  # Provider-specific
+```
+
+### Smart Command
+```ini
+[default]
+smart_command = auto  # auto, true, or false
 ```
 
 ### Provider-Specific Settings
