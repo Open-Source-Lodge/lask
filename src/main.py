@@ -20,8 +20,6 @@ import sys
 import os
 import platform
 import subprocess
-import tty
-import termios
 from typing import Union, Iterator, List, Dict
 import readline  # For better input handling in REPL mode
 import atexit
@@ -650,13 +648,20 @@ def run_smart_command(
         )
 
         # Read a single keypress without requiring Enter
-        fd = sys.stdin.fileno()
-        old_settings = termios.tcgetattr(fd)
-        try:
-            tty.setraw(fd)
-            ch = sys.stdin.read(1)
-        finally:
-            termios.tcsetattr(fd, termios.TCSADRAIN, old_settings)
+        if os.name == "posix":
+            import tty
+            import termios
+
+            fd = sys.stdin.fileno()
+            old_settings = termios.tcgetattr(fd)
+            try:
+                tty.setraw(fd)
+                ch = sys.stdin.read(1)
+            finally:
+                termios.tcsetattr(fd, termios.TCSADRAIN, old_settings)
+        else:
+            # Windows (or other non-POSIX): fall back to a simple prompt
+            ch = input() or "\n"
 
         # Check if the key was Enter (\r or \n)
         if ch in ("\r", "\n"):
