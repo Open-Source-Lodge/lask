@@ -28,6 +28,7 @@ import atexit
 
 import configparser
 from src.config import LaskConfig
+from src.chat_history import ChatHistory
 from src.providers import call_provider_api
 
 
@@ -240,32 +241,6 @@ def setup_readline():
         pass
 
 
-def setup_conversation(config: LaskConfig, provider: str) -> List[Dict[str, str]]:
-    """
-    Set up the initial conversation with system prompt if available.
-
-    Args:
-        config (LaskConfig): Configuration object
-        provider (str): The provider name
-
-    Returns:
-        List[Dict[str, str]]: Initial conversation history
-    """
-    conversation: List[Dict[str, str]] = []
-
-    # Add system message if specified in config
-    provider_config = config.get_provider_config(provider)
-    provider_system_prompt = provider_config.system_prompt
-    default_system_prompt = config.system_prompt
-
-    if provider_system_prompt is not None:
-        conversation.append({"role": "system", "content": provider_system_prompt})
-    elif default_system_prompt is not None:
-        conversation.append({"role": "system", "content": default_system_prompt})
-
-    return conversation
-
-
 def process_response(result: Union[str, Iterator[str]]) -> str:
     """
     Process the response from the provider.
@@ -297,13 +272,13 @@ def process_response(result: Union[str, Iterator[str]]) -> str:
     return full_response
 
 
-def handle_repl_command(cmd, conversation):
+def handle_repl_command(cmd, history):
     """
     Handle special REPL commands starting with !
 
     Args:
         cmd (str): The command without the ! prefix
-        conversation (List): The current conversation history
+        history (ChatHistory): The current chat history
 
     Returns:
         bool: True if the command was handled, False otherwise
@@ -388,12 +363,11 @@ def repl_mode(config: LaskConfig) -> None:
     # Configure readline for better line editing
     setup_readline()
 
-    # Initialize conversation history
-    conversation = setup_conversation(config, provider)
+    # Initialize chat history (handles system prompt automatically)
+    history = ChatHistory(config, provider)
 
     # Check smart command setting for REPL routing
     smart = config.smart_command
-    command_history: List[Dict[str, str]] = []
     if smart in ("true", "auto"):
         ensure_shell_hook(config)
 
@@ -433,7 +407,7 @@ def repl_mode(config: LaskConfig) -> None:
             # Check for special REPL commands
             if user_input.startswith("!"):
                 cmd = user_input[1:].strip().lower()
-                if handle_repl_command(cmd, conversation):
+                if handle_repl_command(cmd, history):
                     continue
 
             # Skip empty inputs
@@ -450,53 +424,35 @@ def repl_mode(config: LaskConfig) -> None:
             if use_smart:
                 # Smart command: translate to shell command, don't add to conversation
                 try:
-                    hist = (
-                        command_history
+                    cmd_hist = (
+                        history.command_history
                         if config.smart_context_commands == "true"
                         else []
                     )
                     result = run_smart_command(
-                        config, user_input, is_repl=True, command_history=hist
+                        config, user_input, is_repl=True, command_history=cmd_hist
                     )
                     if result is not None:
-                        command_history.append(result)
-                        # Add to conversation so follow-up questions can
-                        # reference the command and its output
-                        parts = []
-                        if config.smart_context_commands == "true":
-                            parts.append(f"[Ran command: {result['command']}]")
-                        else:
-                            parts.append(
-                                "[A command was executed but command context is disabled. Enable with smart_context_commands=true]"
-                            )
-                        if (
-                            config.smart_context_output == "true"
-                            and result.get("output")
-                        ):
-                            parts.append(f"[Output:\n{result['output']}\n]")
-                        else:
-                            parts.append(
-                                "[Command output context is disabled. Enable with smart_context_output=true]"
-                            )
-                        conversation.append(
-                            {"role": "assistant", "content": "\n".join(parts)}
-                        )
+                        history.add_command_entry(result)
+                        history.add_smart_command_context(result)
                 except Exception as e:
                     print(f"\nError: {str(e)}")
                 continue
 
             # Regular prompt: add to conversation and get response
-            conversation.append({"role": "user", "content": user_input})
+            history.add_user_message(user_input)
 
             try:
                 # Call the provider API with the full conversation history
-                result = call_provider_api(provider, config, user_input, conversation)
+                result = call_provider_api(
+                    provider, config, user_input, history.messages
+                )
 
                 # Process the response and get the full text
                 full_response = process_response(result)
 
                 # Add assistant's response to conversation history
-                conversation.append({"role": "assistant", "content": full_response})
+                history.add_assistant_message(full_response)
 
             except Exception as e:
                 print(f"\nError: {str(e)}")
@@ -674,6 +630,7 @@ def run_smart_command(
             print()  # newline after the keypress
             entry: Dict[str, str] = {"prompt": prompt, "command": command}
             capture_output = config.smart_context_output == "true"
+            chunks: list[str] = []
             try:
                 if capture_output:
                     # Stream output live to the terminal while collecting it
@@ -684,17 +641,19 @@ def run_smart_command(
                         stderr=subprocess.STDOUT,
                         text=True,
                     )
-                    chunks: list[str] = []
                     for line in proc.stdout:  # type: ignore[union-attr]
                         print(line, end="", flush=True)
                         chunks.append(line)
                     proc.wait()
-                    entry["output"] = "".join(chunks).strip()
                 else:
                     subprocess.run(command, shell=True)
             except KeyboardInterrupt:
                 if is_repl:
                     print("\n\nCommand interrupted.")
+            # Always save whatever output was captured (including partial
+            # output when the command was interrupted with Ctrl+C)
+            if capture_output and chunks:
+                entry["output"] = "".join(chunks).strip()
             # Save the command so the shell hook can inject it
             # into live history (press up-arrow to recall)
             write_last_command(command)
@@ -911,6 +870,8 @@ def process_one_off_prompt(config: LaskConfig, prompt: str) -> None:
     """
     Process a one-off prompt without maintaining conversation context.
 
+    Uses ChatHistory for consistent system prompt handling across modes.
+
     Args:
         config (LaskConfig): Configuration object
         prompt (str): The user prompt
@@ -925,21 +886,18 @@ def process_one_off_prompt(config: LaskConfig, prompt: str) -> None:
         )
         sys.exit(1)
 
+    # Build conversation with system prompt via ChatHistory
+    history = ChatHistory(config, provider)
+    history.add_user_message(prompt)
+
     try:
         # Call the appropriate API based on the provider using the provider modules
-        result: Union[str, Iterator[str]] = call_provider_api(provider, config, prompt)
+        result: Union[str, Iterator[str]] = call_provider_api(
+            provider, config, prompt, history.messages
+        )
 
-        # Handle streaming vs non-streaming responses
-        if isinstance(result, str):
-            # Non-streaming response - full text is returned at once
-            print(result)
-        else:
-            # Streaming response - print chunks as they arrive in real-time
-            # This provides immediate feedback as the LLM generates content
-            for chunk in result:
-                # Print without buffering and without newline to create a continuous output
-                print(chunk, end="", flush=True)
-            print()  # Add a newline at the end of the complete response
+        # Process the response (handles both streaming and non-streaming)
+        process_response(result)
 
     except ImportError as e:
         print(f"Error: {str(e)}")

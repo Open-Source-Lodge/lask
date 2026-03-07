@@ -93,7 +93,10 @@ class LaskConfig:
                                 setattr(config, key, value)
                             elif key == "smart_command":
                                 setattr(config, key, value.lower().strip())
-                            elif key in ("smart_context_commands", "smart_context_output"):
+                            elif key in (
+                                "smart_context_commands",
+                                "smart_context_output",
+                            ):
                                 setattr(config, key, value.lower().strip())
                             elif key == "shell_hook":
                                 setattr(config, key, value.lower().strip())
