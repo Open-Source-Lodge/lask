@@ -137,7 +137,7 @@ class LaskConfig:
                 )
         else:
             # Config file doesn't exist - make sure default provider exists
-            config.providers["openai"] = ProviderConfig(model="gpt-4o", temperature=0.7)
+            config.providers["openai"] = ProviderConfig(model="gpt-5.2", temperature=0.7)
 
         return config
 

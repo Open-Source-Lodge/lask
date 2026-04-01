@@ -59,7 +59,7 @@ def prompt_for_config_creation() -> None:
     # Provider section with placeholders for API keys
     config["openai"] = {
         "api_key": "YOUR_OPENAI_API_KEY",
-        "model": "gpt-4o",
+        "model": "gpt-5.2",
         "temperature": "0.7",
         "streaming": "true",
     }
@@ -67,7 +67,7 @@ def prompt_for_config_creation() -> None:
     # Add other providers as commented examples
     config["anthropic"] = {
         "api_key": "YOUR_ANTHROPIC_API_KEY",
-        "model": "claude-3-opus-20240229",
+        "model": "claude-sonnet-4-5",
         "temperature": "0.7",
         "streaming": "true",
     }
