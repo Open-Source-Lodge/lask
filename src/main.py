@@ -59,7 +59,7 @@ def prompt_for_config_creation() -> None:
     # Provider section with placeholders for API keys
     config["openai"] = {
         "api_key": "YOUR_OPENAI_API_KEY",
-        "model": "gpt-4o",
+        "model": "gpt-5",
         "temperature": "0.7",
         "streaming": "true",
     }
@@ -67,7 +67,7 @@ def prompt_for_config_creation() -> None:
     # Add other providers as commented examples
     config["anthropic"] = {
         "api_key": "YOUR_ANTHROPIC_API_KEY",
-        "model": "claude-3-opus-20240229",
+        "model": "claude-opus-4-8",
         "temperature": "0.7",
         "streaming": "true",
     }
@@ -75,7 +75,7 @@ def prompt_for_config_creation() -> None:
     config["aws"] = {
         "api_key": "YOUR_AWS_API_KEY",
         "region": "us-east-1",
-        "model_id": "anthropic.claude-3-sonnet-20240229-v1:0",
+        "model_id": "anthropic.claude-opus-4-8",
         "temperature": "0.7",
         "streaming": "true",
     }
@@ -85,7 +85,7 @@ def prompt_for_config_creation() -> None:
         "resource_name": "your-resource-name",
         "deployment_id": "your-deployment-id",
         "api_version": "2023-05-15",
-        "model": "gpt-4",
+        "model": "gpt-5",
         "temperature": "0.7",
         "streaming": "true",
     }

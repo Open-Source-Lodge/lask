@@ -44,7 +44,7 @@ def call_api(
     aws_config = config.get_provider_config("aws")
 
     # Get the model ID
-    model_id: str = aws_config.model_id or "anthropic.claude-3-sonnet-20240229-v1:0"
+    model_id: str = aws_config.model_id or "anthropic.claude-opus-4-8"
     region: str = aws_config.region or "us-east-1"
 
     # Check if streaming is enabled (default to True)

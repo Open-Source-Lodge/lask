@@ -41,7 +41,7 @@ def call_api(
         sys.exit(1)
 
     # Get model from config or use default
-    model: str = openai_config.model or "gpt-4.1"
+    model: str = openai_config.model or "gpt-5"
 
     # Check if streaming is enabled (default to True)
     streaming: bool = openai_config.get("streaming", True)

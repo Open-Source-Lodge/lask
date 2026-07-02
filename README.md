@@ -118,14 +118,14 @@ etc.). Two settings control what is included:
 
    [openai]
    api_key = your-api-key-here
-   model = gpt-4.1
+   model = gpt-5
 
    [anthropic]
    api_key = your-api-key-here
-   model = claude-3-opus-20240229
+   model = claude-opus-4-8
 
    [aws]
-   model_id = anthropic.claude-3-sonnet-20240229-v1:0
+   model_id = anthropic.claude-opus-4-8
    region = us-east-1
 
    [azure]

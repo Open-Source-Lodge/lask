@@ -44,7 +44,7 @@ def call_api(
         sys.exit(1)
 
     # Get model (Claude by default)
-    model: str = anthropic_config.model or "claude-3-opus-20240229"
+    model: str = anthropic_config.model or "claude-opus-4-8"
 
     # Check if streaming is enabled (default to True)
     streaming: bool = anthropic_config.get("streaming", True)
